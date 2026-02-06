@@ -13,6 +13,7 @@ export async function GET(request: NextRequest) {
     .from("reports")
     .select("*")
     .eq("user_id", auth.userId)
+    .neq("status", "promoted")
     .order("created_at", { ascending: false });
 
   if (error) {

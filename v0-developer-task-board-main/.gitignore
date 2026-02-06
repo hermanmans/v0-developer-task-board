@@ -8,6 +8,8 @@ instrumentation-client.ts
 # Common ignores
 node_modules/
 .next/
-.env*.local
+.env
+.env.local
+.env.*.local
 .DS_Store
 ../package-lock.json

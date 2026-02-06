@@ -8,9 +8,9 @@
     "start": "next start",
     "lint": "eslint ."
   },
-    "engines": {
-      "node": "18.x"
-    },
+  "engines": {
+    "node": "24.x"
+  },
   "dependencies": {
     "@hookform/resolvers": "^3.9.1",
     "@radix-ui/react-accordion": "1.2.2",

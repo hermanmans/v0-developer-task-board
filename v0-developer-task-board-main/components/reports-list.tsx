@@ -182,9 +182,6 @@ export function ReportsList() {
     filterStatus !== "all";
 
   const filteredReports = reports.filter((r) => {
-    // Hide promoted reports unless explicitly filtering for them
-    if (r.status === "promoted" && filterStatus !== "promoted") return false;
-    
     if (searchQuery) {
       const q = searchQuery.toLowerCase();
       if (

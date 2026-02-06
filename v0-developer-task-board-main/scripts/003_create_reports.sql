@@ -7,7 +7,7 @@ create table if not exists public.reports (
   priority text not null default 'medium' check (priority in ('critical', 'high', 'medium', 'low')),
   reporter_name text not null,
   reporter_email text not null default '',
-  status text not null default 'open' check (status in ('open', 'accepted', 'declined')),
+  status text not null default 'open' check (status in ('open', 'reviewing', 'promoted', 'dismissed')),
   user_id uuid not null references auth.users(id) on delete cascade,
   promoted_task_id uuid references public.tasks(id) on delete set null,
   created_at timestamptz not null default now(),

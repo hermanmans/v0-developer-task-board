@@ -174,17 +174,28 @@ export function KanbanBoard() {
   const handleDeleteTask = useCallback(
     async (taskId: string) => {
       try {
+        // Optimistic update: remove immediately from UI
+        const previousTasks = tasks;
+        const optimistic = tasks.filter((t) => t.id !== taskId);
+        mutate(optimistic, false);
+
         const res = await authFetch(`/api/tasks/${taskId}`, {
           method: "DELETE",
         });
-        if (!res.ok) throw new Error("Failed to delete task");
-        toast.success("Task deleted");
-        mutate();
+        if (!res.ok) {
+          // Rollback on error
+          mutate(previousTasks, false);
+          toast.error("Failed to delete task");
+        } else {
+          toast.success("Task deleted");
+          // Revalidate in background to ensure consistency
+          mutate();
+        }
       } catch {
         toast.error("Failed to delete task");
       }
     },
-    [authFetch, mutate]
+    [authFetch, mutate, tasks]
   );
 
   const openCreateDialog = useCallback((status: TaskStatus = "backlog") => {

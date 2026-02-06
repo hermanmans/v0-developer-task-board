@@ -67,10 +67,14 @@ export async function POST(
   }
 
   // Update report status to promoted with link to the task
-  await supabase
+  const { error: updateError } = await supabase
     .from("reports")
     .update({ status: "promoted", promoted_task_id: task.id })
     .eq("id", id);
+
+  if (updateError) {
+    return NextResponse.json({ error: updateError.message }, { status: 500 });
+  }
 
   return NextResponse.json({ task, report_id: id }, { status: 201 });
 }

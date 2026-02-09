@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useMemo } from "react";
+import { useState, useCallback, useMemo, useEffect } from "react";
 import { useAuth } from "@/lib/auth-provider";
 import useSWR from "swr";
 import {
@@ -50,6 +50,14 @@ export function KanbanBoard() {
     isLoading,
     mutate,
   } = useSWR<Task[]>("/api/tasks", fetcher, { fallbackData: [] });
+
+  useEffect(() => {
+    const handleTasksChanged = () => {
+      mutate();
+    };
+    window.addEventListener("tasks:changed", handleTasksChanged);
+    return () => window.removeEventListener("tasks:changed", handleTasksChanged);
+  }, [mutate]);
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);

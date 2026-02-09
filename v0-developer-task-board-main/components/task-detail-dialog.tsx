@@ -92,8 +92,6 @@ function getUserColor(email: string) {
   return colors[Math.abs(hash) % colors.length];
 }
 
-const commentsFetcher = (url: string) => authFetch(url); // Declare commentsFetcher
-
 export function TaskDetailDialog({
   task,
   open,
@@ -103,6 +101,14 @@ export function TaskDetailDialog({
   const { authFetch } = useAuth();
   const [newComment, setNewComment] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showGithubForm, setShowGithubForm] = useState(false);
+  const [githubRepo, setGithubRepo] = useState("");
+  const [issueTitle, setIssueTitle] = useState("");
+  const [issueBody, setIssueBody] = useState("");
+  const [githubUsername, setGithubUsername] = useState("");
+  const [createBranch, setCreateBranch] = useState(false);
+  const [branchName, setBranchName] = useState("");
+  const [isGithubSubmitting, setIsGithubSubmitting] = useState(false);
   const commentsEndRef = useRef<HTMLDivElement>(null);
 
   const commentsFetcher = useCallback(
@@ -129,6 +135,105 @@ export function TaskDetailDialog({
       commentsEndRef.current.scrollIntoView({ behavior: "smooth" });
     }
   }, [comments]);
+
+  useEffect(() => {
+    if (task && open) {
+      setIssueTitle(task.title || "");
+      setIssueBody(task.description || "");
+      setGithubRepo("");
+      setGithubUsername("");
+      setBranchName(`issue-${task.task_key || task.id}`);
+      setCreateBranch(false);
+      setShowGithubForm(false);
+    }
+  }, [task, open]);
+
+  const handleCreateGithubIssue = useCallback(async () => {
+    if (!githubRepo || !issueTitle || !task) {
+      alert("Please provide repository and title");
+      return;
+    }
+    setIsGithubSubmitting(true);
+    try {
+      // Strip .git from repo name if present
+      const cleanRepo = githubRepo.replace(/\.git$/, "");
+      const [owner, repo] = cleanRepo.split("/");
+      
+      if (!owner || !repo) {
+        alert('Invalid repository format. Use "owner/repo"');
+        setIsGithubSubmitting(false);
+        return;
+      }
+
+      const res = await authFetch("/api/github/create-issue", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ 
+          owner, 
+          repo, 
+          title: issueTitle, 
+          issueBody, 
+          labels: task.labels || [], 
+          assignees: githubUsername ? [githubUsername] : [] 
+        }),
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        alert("Failed to create issue: " + JSON.stringify(err));
+        setIsGithubSubmitting(false);
+        return;
+      }
+      const json = await res.json();
+      const issue = json.issue;
+      let branchResult = null;
+      let finalBranchName: string | null = null;
+      if (createBranch) {
+        const normalizedBranchName =
+          branchName.trim() || `issue-${issue?.number || task.task_key || task.id}`;
+        finalBranchName = normalizedBranchName;
+        const bres = await authFetch("/api/github/create-branch", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ owner, repo, branchName: normalizedBranchName }),
+        });
+        if (!bres.ok) {
+          const berr = await bres.json();
+          alert("Issue created but failed to create branch: " + JSON.stringify(berr));
+        } else {
+          branchResult = await bres.json();
+          const refName = branchResult?.branch?.ref;
+          if (typeof refName === "string" && refName.startsWith("refs/heads/")) {
+            finalBranchName = refName.replace("refs/heads/", "");
+          }
+        }
+      }
+      try {
+        const issueUrl = issue?.html_url || issue?.url || null;
+        const issueNumber =
+          typeof issue?.number === "number" ? issue.number : null;
+        await authFetch(`/api/tasks/${task.id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            github_repo: cleanRepo,
+            github_issue_url: issueUrl,
+            github_issue_number: issueNumber,
+            github_branch: finalBranchName,
+          }),
+        });
+        window.dispatchEvent(new CustomEvent("tasks:changed"));
+      } catch {
+        alert("Issue created, but failed to link it to this task.");
+      }
+      alert("Issue created: " + (issue.html_url || issue.url));
+      if (branchResult) alert("Branch created: " + (branchResult.branch?.ref || JSON.stringify(branchResult.branch)));
+      setShowGithubForm(false);
+    } catch (err: any) {
+      alert("Error creating GitHub issue: " + String(err));
+    } finally {
+      setIsGithubSubmitting(false);
+    }
+  }, [githubRepo, issueTitle, issueBody, githubUsername, createBranch, branchName, task, authFetch]);
 
   if (!open || !task) return null;
 
@@ -206,6 +311,12 @@ export function TaskDetailDialog({
               Edit
             </button>
             <button
+              onClick={() => setShowGithubForm((s) => !s)}
+              className="flex h-8 items-center gap-1.5 rounded-md border border-input bg-background px-3 text-xs font-medium text-foreground transition-colors hover:bg-secondary"
+            >
+              GitHub
+            </button>
+            <button
               onClick={onClose}
               className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
             >
@@ -213,6 +324,89 @@ export function TaskDetailDialog({
             </button>
           </div>
         </div>
+
+        {showGithubForm && (
+          <div className="border-b border-border px-6 py-4">
+            <div className="grid grid-cols-1 gap-3 max-w-2xl">
+              <div>
+                <label className="block text-sm font-medium text-foreground mb-1">Repository (owner/repo)</label>
+                <input
+                  value={githubRepo}
+                  onChange={(e) => setGithubRepo(e.target.value)}
+                  placeholder="owner/repo"
+                  className="w-full h-10 rounded-lg border border-input bg-background px-3 text-sm text-foreground"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-foreground mb-1">Issue Title</label>
+                <input
+                  value={issueTitle}
+                  onChange={(e) => setIssueTitle(e.target.value)}
+                  className="w-full h-10 rounded-lg border border-input bg-background px-3 text-sm text-foreground"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-foreground mb-1">Issue Body</label>
+                <textarea
+                  value={issueBody}
+                  onChange={(e) => setIssueBody(e.target.value)}
+                  rows={3}
+                  className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground resize-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-foreground mb-1">Assign to GitHub user (optional)</label>
+                <input
+                  value={githubUsername}
+                  onChange={(e) => setGithubUsername(e.target.value)}
+                  placeholder="GitHub username"
+                  className="w-full h-10 rounded-lg border border-input bg-background px-3 text-sm text-foreground"
+                />
+              </div>
+
+              <div className="flex items-center gap-2">
+                <input
+                  id="create-branch"
+                  type="checkbox"
+                  checked={createBranch}
+                  onChange={(e) => setCreateBranch(e.target.checked)}
+                />
+                <label htmlFor="create-branch" className="text-sm text-foreground">Create branch from repo default</label>
+              </div>
+
+              {createBranch && (
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-1">Branch name</label>
+                  <input
+                    value={branchName}
+                    onChange={(e) => setBranchName(e.target.value)}
+                    className="w-full h-10 rounded-lg border border-input bg-background px-3 text-sm text-foreground"
+                  />
+                </div>
+              )}
+
+              <div className="flex justify-end gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowGithubForm(false)}
+                  className="h-9 rounded-lg border border-border bg-transparent px-3 text-sm font-medium text-foreground transition-colors hover:bg-secondary"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleCreateGithubIssue}
+                  disabled={isGithubSubmitting}
+                  className="h-9 rounded-lg bg-primary px-3 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isGithubSubmitting ? "Creating..." : "Create on GitHub"}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Body */}
         <div className="flex-1 overflow-y-auto">

@@ -11,6 +11,8 @@ import {
   Pencil,
   Trash2,
   MessageSquare,
+  Github,
+  GitBranch,
 } from "lucide-react";
 import type { Task, TaskPriority } from "@/lib/types";
 import { TYPE_CONFIG, PRIORITY_CONFIG } from "@/lib/types";
@@ -117,6 +119,62 @@ export function TaskCard({ task, onEdit, onDelete, onView }: TaskCardProps) {
                 {priorityConfig.label}
               </span>
             </div>
+
+            {(task.github_issue_url ||
+              task.github_issue_number ||
+              task.github_branch) && (
+              <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
+                {(task.github_issue_url || task.github_issue_number) &&
+                  (task.github_issue_url ? (
+                    <a
+                      href={task.github_issue_url}
+                      target="_blank"
+                      rel="noreferrer"
+                      onClick={(e) => e.stopPropagation()}
+                      className="inline-flex items-center gap-1 rounded bg-secondary px-1.5 py-0.5 text-[10px] text-secondary-foreground transition-colors hover:bg-secondary/80"
+                      title={
+                        task.github_repo && task.github_issue_number
+                          ? `${task.github_repo}#${task.github_issue_number}`
+                          : "GitHub issue"
+                      }
+                    >
+                      <Github className="h-3 w-3" />
+                      <span>
+                        {task.github_issue_number
+                          ? `#${task.github_issue_number}`
+                          : "Issue"}
+                      </span>
+                    </a>
+                  ) : (
+                    <span
+                      className="inline-flex items-center gap-1 rounded bg-secondary px-1.5 py-0.5 text-[10px] text-secondary-foreground"
+                      title={
+                        task.github_repo && task.github_issue_number
+                          ? `${task.github_repo}#${task.github_issue_number}`
+                          : "GitHub issue"
+                      }
+                    >
+                      <Github className="h-3 w-3" />
+                      <span>
+                        {task.github_issue_number
+                          ? `#${task.github_issue_number}`
+                          : "Issue"}
+                      </span>
+                    </span>
+                  ))}
+                {task.github_branch && (
+                  <span
+                    className="inline-flex items-center gap-1 rounded bg-secondary px-1.5 py-0.5 text-[10px] text-secondary-foreground"
+                    title={`Branch: ${task.github_branch}`}
+                  >
+                    <GitBranch className="h-3 w-3" />
+                    <span className="max-w-[120px] truncate">
+                      {task.github_branch}
+                    </span>
+                  </span>
+                )}
+              </div>
+            )}
 
             {task.labels.length > 0 && (
               <div className="flex items-center gap-1 flex-wrap">

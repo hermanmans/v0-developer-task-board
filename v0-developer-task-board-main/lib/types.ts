@@ -21,6 +21,10 @@ export interface Task {
   task_key: string;
   user_id: string;
   report_id: string | null;
+  github_repo: string | null;
+  github_issue_url: string | null;
+  github_issue_number: number | null;
+  github_branch: string | null;
   created_at: string;
   updated_at: string;
 }

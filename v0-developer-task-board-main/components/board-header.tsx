@@ -105,13 +105,13 @@ export function BoardHeader({
     <header className="flex flex-col gap-4 border-b border-border bg-card px-6 py-4">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-white">
-            {/* <Bug className="h-5 w-5 text-primary-foreground" /> */}
-            <img src="/alphatech_logo.png" alt="AlphaTech" className="h-6 w-6 bg-white" />
+          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-blue-500/10">
+            <Bug className="h-5 w-5 text-primary-foreground" />
+            {/* <img src="/alphatech_logo.png" alt="AlphaTech" className="h-6 w-6 bg-white" /> */}
           </div>
           <div>
             <h1 className="text-lg font-semibold leading-none tracking-tight text-foreground">
-              AGT Task Board
+              Task Board
             </h1>
             <p className="text-xs text-muted-foreground">Task Tracker</p>
           </div>

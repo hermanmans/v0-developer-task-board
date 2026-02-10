@@ -13,6 +13,7 @@ import {
   MessageSquare,
   Github,
   GitBranch,
+  Handshake,
 } from "lucide-react";
 import type { Task, TaskPriority } from "@/lib/types";
 import { TYPE_CONFIG, PRIORITY_CONFIG } from "@/lib/types";
@@ -203,7 +204,8 @@ export function TaskCard({ task, onEdit, onDelete, onView }: TaskCardProps) {
             )}
 
             {task.assignee && (
-              <div className="ml-auto flex items-center">
+              <div className="flex items-center gap-1">
+                <Handshake className="h-3.5 w-3.5" />
                 <span className="text-[11px] font-medium text-foreground/80">
                   {formatAssigneeName(task.assignee)}
                 </span>

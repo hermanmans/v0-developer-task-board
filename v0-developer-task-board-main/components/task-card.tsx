@@ -25,6 +25,14 @@ interface TaskCardProps {
   onView: (task: Task) => void;
 }
 
+function formatAssigneeName(name: string) {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (parts.length >= 2) {
+    return `${parts[0][0]}.${parts[parts.length - 1]}`;
+  }
+  return parts[0] ?? "";
+}
+
 function PriorityIcon({ priority }: { priority: TaskPriority }) {
   switch (priority) {
     case "critical":
@@ -194,9 +202,13 @@ export function TaskCard({ task, onEdit, onDelete, onView }: TaskCardProps) {
               </div>
             )}
 
-            <div className="ml-auto flex items-center gap-1 text-muted-foreground/50">
-              <MessageSquare className="h-3 w-3" />
-            </div>
+            {task.assignee && (
+              <div className="ml-auto flex items-center">
+                <span className="text-[11px] font-medium text-foreground/80">
+                  {formatAssigneeName(task.assignee)}
+                </span>
+              </div>
+            )}
           </div>
         </div>
 

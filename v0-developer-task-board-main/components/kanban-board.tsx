@@ -226,11 +226,13 @@ export function KanbanBoard() {
 
   const handleDragStart = useCallback(
     (event: DragStartEvent) => {
-      const task = tasks?.find((t) => t.id === event.active.id);
+      const taskFromEvent = event.active.data.current?.task as Task | undefined;
+      const task = taskFromEvent ?? tasks?.find((t) => t.id === event.active.id);
       if (task) {
         setActiveTask(task);
         activeTaskRef.current = task;
       } else {
+        setActiveTask(null);
         activeTaskRef.current = null;
       }
     },
@@ -303,9 +305,7 @@ export function KanbanBoard() {
       if (!newStatus) return;
 
       const task = tasks.find((t) => t.id === activeId);
-      if (!task) return;
-
-      const originalStatus = dragStartStatus ?? task.status;
+      const originalStatus = dragStartStatus ?? task?.status ?? null;
       if (originalStatus === newStatus) return;
 
       try {

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useMemo, useEffect } from "react";
+import { useState, useCallback, useMemo, useEffect, useRef } from "react";
 import { useAuth } from "@/lib/auth-provider";
 import useSWR from "swr";
 import {
@@ -64,6 +64,7 @@ export function KanbanBoard() {
   const [defaultStatus, setDefaultStatus] = useState<TaskStatus>("backlog");
   const [activeTask, setActiveTask] = useState<Task | null>(null);
   const [viewingTask, setViewingTask] = useState<Task | null>(null);
+  const activeTaskRef = useRef<Task | null>(null);
 
   // Filters
   const [searchQuery, setSearchQuery] = useState("");
@@ -182,9 +183,10 @@ export function KanbanBoard() {
   const handleDeleteTask = useCallback(
     async (taskId: string) => {
       try {
+        const currentTasks = tasks ?? [];
         // Optimistic update: remove immediately from UI
-        const previousTasks = tasks;
-        const optimistic = tasks.filter((t) => t.id !== taskId);
+        const previousTasks = currentTasks;
+        const optimistic = currentTasks.filter((t) => t.id !== taskId);
         mutate(optimistic, false);
 
         const res = await authFetch(`/api/tasks/${taskId}`, {
@@ -225,7 +227,12 @@ export function KanbanBoard() {
   const handleDragStart = useCallback(
     (event: DragStartEvent) => {
       const task = tasks?.find((t) => t.id === event.active.id);
-      if (task) setActiveTask(task);
+      if (task) {
+        setActiveTask(task);
+        activeTaskRef.current = task;
+      } else {
+        activeTaskRef.current = null;
+      }
     },
     [tasks]
   );
@@ -274,6 +281,8 @@ export function KanbanBoard() {
     async (event: DragEndEvent) => {
       const { active, over } = event;
       setActiveTask(null);
+      const dragStartStatus = activeTaskRef.current?.status ?? null;
+      activeTaskRef.current = null;
 
       if (!over || !tasks) return;
 
@@ -296,7 +305,8 @@ export function KanbanBoard() {
       const task = tasks.find((t) => t.id === activeId);
       if (!task) return;
 
-      if (task.status === newStatus) return;
+      const originalStatus = dragStartStatus ?? task.status;
+      if (originalStatus === newStatus) return;
 
       try {
         const res = await authFetch(`/api/tasks/${activeId}`, {

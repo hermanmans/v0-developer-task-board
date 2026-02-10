@@ -13,6 +13,7 @@ import {
   ArrowUp,
   ArrowDown,
   Minus,
+  Bell,
   User,
   Loader2,
 } from "lucide-react";
@@ -103,6 +104,7 @@ export function TaskDetailDialog({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showGithubForm, setShowGithubForm] = useState(false);
   const [githubRepo, setGithubRepo] = useState("");
+  const [githubProjectId, setGithubProjectId] = useState("");
   const [issueTitle, setIssueTitle] = useState("");
   const [issueBody, setIssueBody] = useState("");
   const [githubUsername, setGithubUsername] = useState("");
@@ -110,6 +112,20 @@ export function TaskDetailDialog({
   const [branchName, setBranchName] = useState("");
   const [isGithubSubmitting, setIsGithubSubmitting] = useState(false);
   const commentsEndRef = useRef<HTMLDivElement>(null);
+
+  const projectsFetcher = useCallback(
+    async (url: string) => {
+      const res = await authFetch(url);
+      if (!res.ok) throw new Error("Failed to fetch projects");
+      return res.json();
+    },
+    [authFetch]
+  );
+
+  const { data: projectsData } = useSWR(
+    open ? "/api/github/projects" : null,
+    projectsFetcher
+  );
 
   const commentsFetcher = useCallback(
     async (url: string): Promise<Comment[]> => {
@@ -140,15 +156,20 @@ export function TaskDetailDialog({
     if (task && open) {
       setIssueTitle(task.title || "");
       setIssueBody(task.description || "");
-      setGithubRepo("");
+      setGithubRepo(task.github_repo || "");
+      setGithubProjectId("");
       setGithubUsername("");
-      setBranchName(`issue-${task.task_key || task.id}`);
+      setBranchName(task.github_branch || `issue-${task.task_key || task.id}`);
       setCreateBranch(false);
       setShowGithubForm(false);
     }
   }, [task, open]);
 
   const handleCreateGithubIssue = useCallback(async () => {
+    if (task?.github_issue_url || task?.github_issue_number || task?.github_branch) {
+      alert("This task already has a GitHub issue or branch linked.");
+      return;
+    }
     if (!githubRepo || !issueTitle || !task) {
       alert("Please provide repository and title");
       return;
@@ -252,6 +273,7 @@ export function TaskDetailDialog({
       if (!res.ok) throw new Error("Failed to post comment");
       setNewComment("");
       mutateComments();
+      window.dispatchEvent(new CustomEvent("tasks:changed"));
     } catch {
       // Error handled silently
     } finally {
@@ -263,6 +285,39 @@ export function TaskDetailDialog({
     if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
       handleSubmitComment();
     }
+  };
+
+  const handleNotifyAssignee = () => {
+    if (!task?.assignee) return;
+    if (typeof window === "undefined") return;
+    if (!("Notification" in window)) {
+      alert("Notifications are not supported in this browser.");
+      return;
+    }
+
+    const sendNotification = () => {
+      try {
+        new Notification(`Notify ${task.assignee}`, {
+          body: `${task.task_key}: ${task.title}`,
+        });
+      } catch {
+        alert("Notification permission is blocked.");
+      }
+    };
+
+    if (Notification.permission === "granted") {
+      sendNotification();
+      return;
+    }
+
+    if (Notification.permission !== "denied") {
+      Notification.requestPermission().then((permission) => {
+        if (permission === "granted") sendNotification();
+      });
+      return;
+    }
+
+    alert("Notifications are blocked for this site.");
   };
 
   const statusLabels: Record<string, string> = {
@@ -302,6 +357,31 @@ export function TaskDetailDialog({
             <h2 className="text-lg font-semibold text-foreground text-balance">
               {task.title}
             </h2>
+            {(task.github_issue_url || task.github_issue_number || task.github_branch) && (
+              <div className="mt-2 flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground">
+                {(task.github_issue_url || task.github_issue_number) && (
+                  task.github_issue_url ? (
+                    <a
+                      href={task.github_issue_url}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex items-center gap-1 rounded bg-secondary px-1.5 py-0.5 text-[10px] text-secondary-foreground transition-colors hover:bg-secondary/80"
+                    >
+                      Issue {task.github_issue_number ? `#${task.github_issue_number}` : ""}
+                    </a>
+                  ) : (
+                    <span className="inline-flex items-center gap-1 rounded bg-secondary px-1.5 py-0.5 text-[10px] text-secondary-foreground">
+                      Issue {task.github_issue_number ? `#${task.github_issue_number}` : ""}
+                    </span>
+                  )
+                )}
+                {task.github_branch && (
+                  <span className="inline-flex items-center gap-1 rounded bg-secondary px-1.5 py-0.5 text-[10px] text-secondary-foreground">
+                    Branch {task.github_branch}
+                  </span>
+                )}
+              </div>
+            )}
           </div>
           <div className="flex items-center gap-1">
             <button
@@ -312,7 +392,8 @@ export function TaskDetailDialog({
             </button>
             <button
               onClick={() => setShowGithubForm((s) => !s)}
-              className="flex h-8 items-center gap-1.5 rounded-md border border-input bg-background px-3 text-xs font-medium text-foreground transition-colors hover:bg-secondary"
+              disabled={Boolean(task.github_issue_url || task.github_issue_number || task.github_branch)}
+              className="flex h-8 items-center gap-1.5 rounded-md border border-input bg-background px-3 text-xs font-medium text-foreground transition-colors hover:bg-secondary disabled:opacity-50 disabled:cursor-not-allowed"
             >
               GitHub
             </button>
@@ -328,6 +409,34 @@ export function TaskDetailDialog({
         {showGithubForm && (
           <div className="border-b border-border px-6 py-4">
             <div className="grid grid-cols-1 gap-3 max-w-2xl">
+              {projectsData?.projects && projectsData.projects.length > 0 && (
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-1">
+                    Project
+                  </label>
+                  <select
+                    value={githubProjectId}
+                    onChange={(e) => {
+                      const nextId = e.target.value;
+                      setGithubProjectId(nextId);
+                      const project = projectsData.projects.find(
+                        (p: any) => p.id === nextId
+                      );
+                      if (project?.owner && project?.repo) {
+                        setGithubRepo(`${project.owner}/${project.repo}`);
+                      }
+                    }}
+                    className="w-full h-10 rounded-lg border border-input bg-background px-3 text-sm text-foreground"
+                  >
+                    <option value="">Select a project</option>
+                    {projectsData.projects.map((project: any) => (
+                      <option key={project.id} value={project.id}>
+                        {project.display_name || `${project.owner}/${project.repo}`}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
               <div>
                 <label className="block text-sm font-medium text-foreground mb-1">Repository (owner/repo)</label>
                 <input
@@ -398,7 +507,7 @@ export function TaskDetailDialog({
                 </button>
                 <button
                   onClick={handleCreateGithubIssue}
-                  disabled={isGithubSubmitting}
+                  disabled={isGithubSubmitting || Boolean(task.github_issue_url || task.github_issue_number || task.github_branch)}
                   className="h-9 rounded-lg bg-primary px-3 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {isGithubSubmitting ? "Creating..." : "Create on GitHub"}
@@ -427,11 +536,21 @@ export function TaskDetailDialog({
               <span className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
                 Assignee
               </span>
-              <div className="flex items-center gap-1.5">
+              <div className="flex items-center gap-2">
                 <User className="h-3.5 w-3.5 text-muted-foreground" />
                 <span className="text-sm text-foreground">
                   {task.assignee || "Unassigned"}
                 </span>
+                {task.assignee && (
+                  <button
+                    type="button"
+                    onClick={handleNotifyAssignee}
+                    className="ml-1 inline-flex items-center gap-1 rounded-full border border-border bg-background px-2 py-0.5 text-[11px] font-medium text-foreground transition-colors hover:bg-secondary"
+                  >
+                    <Bell className="h-3 w-3" />
+                    Notify
+                  </button>
+                )}
               </div>
             </div>
             <div className="flex flex-col gap-1">
@@ -479,7 +598,7 @@ export function TaskDetailDialog({
           )}
 
           {/* Comments Section */}
-          <div className="px-6 py-4">
+          <div className="border-t border-border bg-muted/30 px-6 py-4">
             <div className="mb-4 flex items-center gap-2">
               <MessageSquare className="h-4 w-4 text-muted-foreground" />
               <span className="text-sm font-medium text-foreground">

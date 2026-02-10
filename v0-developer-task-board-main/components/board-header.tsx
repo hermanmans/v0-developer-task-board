@@ -4,6 +4,8 @@ import React from "react"
 
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
+import useSWR from "swr";
+import { useAuth } from "@/lib/auth-provider";
 import {
   Bug,
   LogOut,
@@ -89,6 +91,15 @@ export function BoardHeader({
   statusCounts,
 }: BoardHeaderProps) {
   const router = useRouter();
+  const { authFetch } = useAuth();
+
+  const fetcher = async (url: string) => {
+    const res = await authFetch(url);
+    if (!res.ok) throw new Error("Failed to load profile");
+    return res.json();
+  };
+  const { data } = useSWR("/api/profile", fetcher);
+  const logoUrl = data?.profile?.company_logo_url as string | undefined;
 
   const handleLogout = async () => {
     const supabase = createClient();
@@ -106,8 +117,15 @@ export function BoardHeader({
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-blue-500/10">
-            <Bug className="h-5 w-5 text-primary-foreground" />
-            {/* <img src="/alphatech_logo.png" alt="AlphaTech" className="h-6 w-6 bg-white" /> */}
+            {logoUrl ? (
+              <img
+                src={logoUrl}
+                alt="Company logo"
+                className="h-6 w-6 rounded-md object-contain"
+              />
+            ) : (
+              <Bug className="h-5 w-5 text-primary-foreground" />
+            )}
           </div>
           <div>
             <h1 className="text-lg font-semibold leading-none tracking-tight text-foreground">

@@ -71,6 +71,7 @@ export function TaskCard({ task, onEdit, onDelete, onView }: TaskCardProps) {
       style={style}
       className={cn(
         "group relative rounded-lg border border-border bg-card p-3 transition-all cursor-pointer",
+        task.status === "done" && "border-2 border-double border-emerald-500/40",
         isDragging
           ? "z-50 rotate-2 shadow-xl opacity-90 scale-105"
           : "hover:border-primary/30 hover:shadow-sm"
@@ -128,6 +129,18 @@ export function TaskCard({ task, onEdit, onDelete, onView }: TaskCardProps) {
                 {priorityConfig.label}
               </span>
             </div>
+
+            {typeof task.comments_count === "number" && task.comments_count > 0 && (
+              <div
+                className="inline-flex items-center gap-1 rounded-full border border-amber-500/30 bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-medium text-amber-300"
+                title={`${task.comments_count} comment${
+                  task.comments_count === 1 ? "" : "s"
+                }`}
+              >
+                <MessageSquare className="h-3 w-3" />
+                <span>{task.comments_count}</span>
+              </div>
+            )}
 
             {(task.github_issue_url ||
               task.github_issue_number ||
@@ -204,11 +217,12 @@ export function TaskCard({ task, onEdit, onDelete, onView }: TaskCardProps) {
             )}
 
             {task.assignee && (
-              <div className="flex items-center gap-1">
-                <Handshake className="h-3.5 w-3.5" />
-                <span className="text-[11px] font-medium text-foreground/80">
-                  {formatAssigneeName(task.assignee)}
-                </span>
+              <div
+                className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-emerald-300"
+                title={task.assignee}
+              >
+                <Handshake className="h-3 w-3" />
+                <span>{formatAssigneeName(task.assignee)}</span>
               </div>
             )}
           </div>

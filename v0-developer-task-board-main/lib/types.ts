@@ -18,6 +18,7 @@ export interface Task {
   type: TaskType;
   labels: string[];
   assignee: string;
+  comments_count?: number;
   task_key: string;
   user_id: string;
   report_id: string | null;

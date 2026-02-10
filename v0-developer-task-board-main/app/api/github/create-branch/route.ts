@@ -1,4 +1,7 @@
 import { NextResponse } from "next/server";
+import { authenticateRequest } from "@/lib/auth";
+import { createClient } from "@/lib/supabase/server";
+import { decryptSecret } from "@/lib/crypto";
 
 async function getJson(res: Response) {
   try {
@@ -13,9 +16,24 @@ export async function POST(req: Request) {
     const body = await req.json();
     const { owner, repo, branchName, baseBranch } = body;
 
-    const token = process.env.GITHUB_TOKEN;
+    let token = process.env.GITHUB_TOKEN || null;
+    const authUser = await authenticateRequest(req);
+    if (authUser) {
+      const supabase = await createClient();
+      const { data } = await supabase
+        .from("profiles")
+        .select("github_token_enc")
+        .eq("user_id", authUser.userId)
+        .single();
+      if (data?.github_token_enc) {
+        token = decryptSecret(data.github_token_enc);
+      }
+    }
     if (!token) {
-      return NextResponse.json({ error: "GITHUB_TOKEN not configured" }, { status: 500 });
+      return NextResponse.json(
+        { error: "GitHub token not configured. Add it in Profile settings." },
+        { status: 500 }
+      );
     }
 
     if (!owner || !repo || !branchName) {

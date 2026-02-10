@@ -11,7 +11,7 @@ export async function GET(request: Request) {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("tasks")
-    .select("*")
+    .select("*, comments:comments(count)")
     .eq("user_id", authUser.userId)
     .order("created_at", { ascending: false });
 
@@ -19,7 +19,17 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  return NextResponse.json(data);
+  const tasksWithCounts =
+    data?.map((task: any) => {
+      const commentCount =
+        Array.isArray(task.comments) && typeof task.comments[0]?.count === "number"
+          ? task.comments[0].count
+          : 0;
+      const { comments, ...rest } = task;
+      return { ...rest, comments_count: commentCount };
+    }) ?? [];
+
+  return NextResponse.json(tasksWithCounts);
 }
 
 export async function POST(request: Request) {

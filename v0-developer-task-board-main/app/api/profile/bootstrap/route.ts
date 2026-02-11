@@ -2,6 +2,20 @@ import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { encryptSecret } from "@/lib/crypto";
 
+function normalizeInviteEmails(values: unknown) {
+  if (!Array.isArray(values)) return [];
+  const seen = new Set<string>();
+  const normalized: string[] = [];
+  for (const value of values) {
+    if (typeof value !== "string") continue;
+    const email = value.trim().toLowerCase();
+    if (!email || seen.has(email)) continue;
+    seen.add(email);
+    normalized.push(email);
+  }
+  return normalized;
+}
+
 export async function POST(request: Request) {
   try {
     const body = await request.json();
@@ -50,7 +64,7 @@ export async function POST(request: Request) {
         company: typeof company === "string" ? company.trim() : null,
         company_logo_url:
           typeof companyLogoUrl === "string" ? companyLogoUrl.trim() : null,
-        invite_emails: Array.isArray(inviteEmails) ? inviteEmails : [],
+        invite_emails: normalizeInviteEmails(inviteEmails),
         contact_number:
           typeof contactNumber === "string" ? contactNumber.trim() : null,
         disclaimer_accepted: Boolean(disclaimerAccepted),

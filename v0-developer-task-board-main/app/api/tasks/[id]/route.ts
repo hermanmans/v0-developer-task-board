@@ -1,5 +1,6 @@
 import { authenticateRequest } from "@/lib/auth";
-import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { resolveBoardOwnerUserId } from "@/lib/team-board";
 import { NextResponse } from "next/server";
 
 export async function PATCH(
@@ -13,13 +14,14 @@ export async function PATCH(
 
   const { id } = await params;
   const body = await request.json();
-  const supabase = await createClient();
+  const supabase = createAdminClient();
+  const boardOwnerUserId = await resolveBoardOwnerUserId(authUser);
 
   const { data, error } = await supabase
     .from("tasks")
     .update(body)
     .eq("id", id)
-    .eq("user_id", authUser.userId)
+    .eq("user_id", boardOwnerUserId)
     .select()
     .single();
 
@@ -40,13 +42,14 @@ export async function DELETE(
   }
 
   const { id } = await params;
-  const supabase = await createClient();
+  const supabase = createAdminClient();
+  const boardOwnerUserId = await resolveBoardOwnerUserId(authUser);
 
   const { error } = await supabase
     .from("tasks")
     .delete()
     .eq("id", id)
-    .eq("user_id", authUser.userId);
+    .eq("user_id", boardOwnerUserId);
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });

@@ -14,6 +14,20 @@ const PROFILE_FIELDS = [
   "popia_accepted",
 ] as const;
 
+function normalizeInviteEmails(values: unknown) {
+  if (!Array.isArray(values)) return [];
+  const seen = new Set<string>();
+  const normalized: string[] = [];
+  for (const value of values) {
+    if (typeof value !== "string") continue;
+    const email = value.trim().toLowerCase();
+    if (!email || seen.has(email)) continue;
+    seen.add(email);
+    normalized.push(email);
+  }
+  return normalized;
+}
+
 export async function GET(request: Request) {
   const authUser = await authenticateRequest(request);
   if (!authUser) {
@@ -54,6 +68,10 @@ export async function PATCH(request: Request) {
   const updates: Record<string, any> = {};
   for (const field of PROFILE_FIELDS) {
     if (field in body) updates[field] = body[field];
+  }
+
+  if ("invite_emails" in updates) {
+    updates.invite_emails = normalizeInviteEmails(updates.invite_emails);
   }
 
   if ("githubToken" in body) {

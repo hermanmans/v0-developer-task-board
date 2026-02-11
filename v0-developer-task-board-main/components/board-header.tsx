@@ -80,6 +80,13 @@ const KPI_ITEMS: {
   },
 ];
 
+const PRIORITY_LEGEND_DOT_CLASS: Record<TaskPriority, string> = {
+  critical: "bg-red-500",
+  high: "bg-orange-500",
+  medium: "bg-yellow-500",
+  low: "bg-slate-400",
+};
+
 export function BoardHeader({
   onCreateTask,
   searchQuery,
@@ -151,6 +158,26 @@ export function BoardHeader({
             <LogOut className="h-4 w-4" />
           </button>
         </div>
+      </div>
+
+      <div className="flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground">
+        <span className="mr-1 text-xs font-medium text-foreground/80">
+          Priority Legend
+        </span>
+        {(Object.keys(PRIORITY_CONFIG) as TaskPriority[]).map((priority) => (
+          <div
+            key={priority}
+            className="inline-flex items-center gap-1 rounded-md border border-border bg-secondary/40 px-2 py-1"
+          >
+            <span
+              className={cn(
+                "h-2 w-2 rounded-full",
+                PRIORITY_LEGEND_DOT_CLASS[priority]
+              )}
+            />
+            <span>{PRIORITY_CONFIG[priority].label}</span>
+          </div>
+        ))}
       </div>
 
       {/* Search/Filters + KPI Cards Row */}

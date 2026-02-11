@@ -1,5 +1,6 @@
 import { authenticateRequest } from "@/lib/auth";
-import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { resolveBoardOwnerUserId } from "@/lib/team-board";
 import { NextResponse } from "next/server";
 
 export async function GET(
@@ -12,7 +13,23 @@ export async function GET(
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const supabase = await createClient();
+  const supabase = createAdminClient();
+  const boardOwnerUserId = await resolveBoardOwnerUserId(authUser);
+
+  const { data: task, error: taskError } = await supabase
+    .from("tasks")
+    .select("id")
+    .eq("id", taskId)
+    .eq("user_id", boardOwnerUserId)
+    .maybeSingle();
+
+  if (taskError) {
+    return NextResponse.json({ error: taskError.message }, { status: 500 });
+  }
+  if (!task) {
+    return NextResponse.json({ error: "Task not found" }, { status: 404 });
+  }
+
   const { data, error } = await supabase
     .from("comments")
     .select("*")
@@ -46,7 +63,23 @@ export async function POST(
     );
   }
 
-  const supabase = await createClient();
+  const supabase = createAdminClient();
+  const boardOwnerUserId = await resolveBoardOwnerUserId(authUser);
+
+  const { data: task, error: taskError } = await supabase
+    .from("tasks")
+    .select("id")
+    .eq("id", taskId)
+    .eq("user_id", boardOwnerUserId)
+    .maybeSingle();
+
+  if (taskError) {
+    return NextResponse.json({ error: taskError.message }, { status: 500 });
+  }
+  if (!task) {
+    return NextResponse.json({ error: "Task not found" }, { status: 404 });
+  }
+
   const { data, error } = await supabase
     .from("comments")
     .insert({

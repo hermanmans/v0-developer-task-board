@@ -1,5 +1,6 @@
 import { authenticateRequest } from "@/lib/auth";
-import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { resolveBoardOwnerUserId } from "@/lib/team-board";
 import { NextResponse } from "next/server";
 
 export async function GET(request: Request) {
@@ -8,11 +9,13 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const supabase = await createClient();
+  const supabase = createAdminClient();
+  const boardOwnerUserId = await resolveBoardOwnerUserId(authUser);
+
   const { data, error } = await supabase
     .from("tasks")
     .select("*, comments:comments(count)")
-    .eq("user_id", authUser.userId)
+    .eq("user_id", boardOwnerUserId)
     .order("created_at", { ascending: false });
 
   if (error) {
@@ -38,14 +41,15 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const supabase = await createClient();
+  const supabase = createAdminClient();
   const body = await request.json();
+  const boardOwnerUserId = await resolveBoardOwnerUserId(authUser);
 
-  // Get or create counter for this user
+  // Get or create counter for the resolved board owner.
   const { data: counterData } = await supabase
     .from("task_counters")
     .select("counter")
-    .eq("user_id", authUser.userId)
+    .eq("user_id", boardOwnerUserId)
     .single();
 
   let nextCounter = 1;
@@ -54,11 +58,11 @@ export async function POST(request: Request) {
     await supabase
       .from("task_counters")
       .update({ counter: nextCounter })
-      .eq("user_id", authUser.userId);
+      .eq("user_id", boardOwnerUserId);
   } else {
     await supabase
       .from("task_counters")
-      .insert({ user_id: authUser.userId, counter: 1 });
+      .insert({ user_id: boardOwnerUserId, counter: 1 });
   }
 
   const taskKey = `BUG-${nextCounter}`;
@@ -74,7 +78,7 @@ export async function POST(request: Request) {
       labels: body.labels || [],
       assignee: body.assignee || "",
       task_key: taskKey,
-      user_id: authUser.userId,
+      user_id: boardOwnerUserId,
       report_id: body.report_id || null,
     })
     .select()

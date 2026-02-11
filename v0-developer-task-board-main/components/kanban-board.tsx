@@ -28,6 +28,16 @@ import { KanbanColumn } from "./kanban-column";
 import { TaskCard } from "./task-card";
 import { TaskDialog } from "./task-dialog";
 import { TaskDetailDialog } from "./task-detail-dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "./ui/alert-dialog";
 
 export function KanbanBoard() {
   const { authFetch } = useAuth();
@@ -64,6 +74,9 @@ export function KanbanBoard() {
   const [defaultStatus, setDefaultStatus] = useState<TaskStatus>("backlog");
   const [activeTask, setActiveTask] = useState<Task | null>(null);
   const [viewingTask, setViewingTask] = useState<Task | null>(null);
+  const [pendingDeleteTaskId, setPendingDeleteTaskId] = useState<string | null>(
+    null
+  );
   const activeTaskRef = useRef<Task | null>(null);
 
   // Filters
@@ -223,6 +236,15 @@ export function KanbanBoard() {
   const openViewDialog = useCallback((task: Task) => {
     setViewingTask(task);
   }, []);
+
+  const openDeleteDialog = useCallback((taskId: string) => {
+    setPendingDeleteTaskId(taskId);
+  }, []);
+
+  const pendingDeleteTask = useMemo(() => {
+    if (!pendingDeleteTaskId || !tasks) return null;
+    return tasks.find((task) => task.id === pendingDeleteTaskId) ?? null;
+  }, [pendingDeleteTaskId, tasks]);
 
   const handleDragStart = useCallback(
     (event: DragStartEvent) => {
@@ -385,7 +407,7 @@ export function KanbanBoard() {
               tasks={tasksByStatus[column.id]}
               onCreateTask={openCreateDialog}
               onEditTask={openEditDialog}
-              onDeleteTask={handleDeleteTask}
+              onDeleteTask={openDeleteDialog}
               onViewTask={openViewDialog}
             />
           ))}
@@ -422,6 +444,37 @@ export function KanbanBoard() {
         onClose={() => setViewingTask(null)}
         onEdit={openEditDialog}
       />
+
+      <AlertDialog
+        open={Boolean(pendingDeleteTaskId)}
+        onOpenChange={(open) => {
+          if (!open) setPendingDeleteTaskId(null);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Task?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone.
+              {pendingDeleteTask ? ` "${pendingDeleteTask.title}" will be permanently removed.` : ""}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={async () => {
+                if (!pendingDeleteTaskId) return;
+                const taskId = pendingDeleteTaskId;
+                setPendingDeleteTaskId(null);
+                await handleDeleteTask(taskId);
+              }}
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

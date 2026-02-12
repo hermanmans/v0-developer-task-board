@@ -1,38 +1,65 @@
-"use server";
-
-import { jwtVerify } from "jose";
+import { createRemoteJWKSet, jwtVerify } from "jose";
 import { createClient } from "@/lib/supabase/server";
 
 /**
- * Verifies a Supabase JWT access token using the project's JWT secret.
- * The JWT secret is stored as a server-only environment variable (SUPABASE_JWT_SECRET)
- * and is NEVER exposed to the client.
+ * Verifies a Supabase JWT access token.
+ * Supports both:
+ * - Legacy symmetric signing (SUPABASE_JWT_SECRET / HS256)
+ * - Asymmetric signing keys via Supabase JWKS endpoint
  *
  * Returns the decoded user payload or null if invalid.
  */
 export async function verifyJwt(token: string) {
+  const supabaseUrl =
+    process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const issuer = supabaseUrl ? `${supabaseUrl}/auth/v1` : undefined;
+  const audience = "authenticated";
   const secret = process.env.SUPABASE_JWT_SECRET;
-  if (!secret) {
-    console.error("[auth] SUPABASE_JWT_SECRET is not set");
-    return null;
+
+  // 1) Try symmetric verification first when JWT secret is available.
+  if (secret) {
+    try {
+      const { payload } = await jwtVerify(token, new TextEncoder().encode(secret), {
+        issuer,
+        audience,
+      });
+      return payload as {
+        sub: string; // user id
+        email?: string;
+        role?: string;
+        aud?: string;
+        exp?: number;
+        iat?: number;
+      };
+    } catch {
+      // fall through to JWKS verification
+    }
   }
 
-  try {
-    const { payload } = await jwtVerify(
-      token,
-      new TextEncoder().encode(secret)
-    );
-    return payload as {
-      sub: string; // user id
-      email?: string;
-      role?: string;
-      aud?: string;
-      exp?: number;
-      iat?: number;
-    };
-  } catch {
-    return null;
+  // 2) Fall back to Supabase JWKS for asymmetric key projects.
+  if (supabaseUrl) {
+    try {
+      const jwks = createRemoteJWKSet(
+        new URL(`${supabaseUrl}/auth/v1/.well-known/jwks.json`)
+      );
+      const { payload } = await jwtVerify(token, jwks, {
+        issuer,
+        audience,
+      });
+      return payload as {
+        sub: string; // user id
+        email?: string;
+        role?: string;
+        aud?: string;
+        exp?: number;
+        iat?: number;
+      };
+    } catch {
+      return null;
+    }
   }
+
+  return null;
 }
 
 /**

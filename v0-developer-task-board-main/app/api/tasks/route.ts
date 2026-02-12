@@ -3,10 +3,29 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { resolveBoardOwnerUserId } from "@/lib/team-board";
 import { NextResponse } from "next/server";
 
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "GET,POST,PATCH,PUT,DELETE,OPTIONS",
+  "Access-Control-Allow-Headers":
+    "Authorization,Content-Type,apikey,x-client-info",
+};
+
+function jsonWithCors(body: unknown, init?: ResponseInit) {
+  const response = NextResponse.json(body, init);
+  Object.entries(corsHeaders).forEach(([key, value]) =>
+    response.headers.set(key, value)
+  );
+  return response;
+}
+
+export async function OPTIONS() {
+  return new NextResponse(null, { status: 204, headers: corsHeaders });
+}
+
 export async function GET(request: Request) {
   const authUser = await authenticateRequest(request);
   if (!authUser) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return jsonWithCors({ error: "Unauthorized" }, { status: 401 });
   }
 
   const supabase = createAdminClient();
@@ -19,7 +38,7 @@ export async function GET(request: Request) {
     .order("created_at", { ascending: false });
 
   if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return jsonWithCors({ error: error.message }, { status: 500 });
   }
 
   const tasksWithCounts =
@@ -32,13 +51,13 @@ export async function GET(request: Request) {
       return { ...rest, comments_count: commentCount };
     }) ?? [];
 
-  return NextResponse.json(tasksWithCounts);
+  return jsonWithCors(tasksWithCounts);
 }
 
 export async function POST(request: Request) {
   const authUser = await authenticateRequest(request);
   if (!authUser) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return jsonWithCors({ error: "Unauthorized" }, { status: 401 });
   }
 
   const supabase = createAdminClient();
@@ -85,8 +104,8 @@ export async function POST(request: Request) {
     .single();
 
   if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return jsonWithCors({ error: error.message }, { status: 500 });
   }
 
-  return NextResponse.json(data, { status: 201 });
+  return jsonWithCors(data, { status: 201 });
 }

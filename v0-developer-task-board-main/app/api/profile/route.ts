@@ -1,7 +1,23 @@
 import { NextResponse } from "next/server";
 import { authenticateRequest } from "@/lib/auth";
-import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { encryptSecret } from "@/lib/crypto";
+
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "GET,POST,PATCH,PUT,DELETE,OPTIONS",
+  "Access-Control-Allow-Headers": "Authorization,Content-Type,apikey,x-client-info",
+};
+
+function withCors(body: unknown, init?: ResponseInit) {
+  const res = NextResponse.json(body, init);
+  Object.entries(corsHeaders).forEach(([k, v]) => res.headers.set(k, v));
+  return res;
+}
+
+export async function OPTIONS() {
+  return new NextResponse(null, { status: 204, headers: corsHeaders });
+}
 
 const PROFILE_FIELDS = [
   "first_name",
@@ -31,25 +47,26 @@ function normalizeInviteEmails(values: unknown) {
 export async function GET(request: Request) {
   const authUser = await authenticateRequest(request);
   if (!authUser) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return withCors({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const supabase = await createClient();
-  const { data, error } = await supabase
+  // Use service role for profile so inserts/updates bypass RLS while still scoped manually.
+  const admin = createAdminClient();
+  const { data, error } = await admin
     .from("profiles")
     .select("*")
     .eq("user_id", authUser.userId)
     .single();
 
   if (error && error.code !== "PGRST116") {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return withCors({ error: error.message }, { status: 500 });
   }
 
   if (!data) {
-    return NextResponse.json({ profile: null });
+    return withCors({ profile: null });
   }
 
-  return NextResponse.json({
+  return withCors({
     profile: {
       ...data,
       has_github_token: Boolean(data.github_token_enc),
@@ -61,7 +78,7 @@ export async function GET(request: Request) {
 export async function PATCH(request: Request) {
   const authUser = await authenticateRequest(request);
   if (!authUser) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return withCors({ error: "Unauthorized" }, { status: 401 });
   }
 
   const body = await request.json();
@@ -82,18 +99,18 @@ export async function PATCH(request: Request) {
 
   updates.updated_at = new Date().toISOString();
 
-  const supabase = await createClient();
-  const { data, error } = await supabase
+  const admin = createAdminClient();
+  const { data, error } = await admin
     .from("profiles")
     .upsert({ user_id: authUser.userId, email: authUser.email, ...updates }, { onConflict: "user_id" })
     .select()
     .single();
 
   if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return withCors({ error: error.message }, { status: 500 });
   }
 
-  return NextResponse.json({
+  return withCors({
     profile: {
       ...data,
       has_github_token: Boolean(data.github_token_enc),

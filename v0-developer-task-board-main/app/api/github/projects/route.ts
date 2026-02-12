@@ -1,14 +1,30 @@
 import { NextResponse } from "next/server";
 import { authenticateRequest } from "@/lib/auth";
-import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
+
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "GET,POST,PATCH,PUT,DELETE,OPTIONS",
+  "Access-Control-Allow-Headers": "Authorization,Content-Type,apikey,x-client-info",
+};
+
+function withCors(body: unknown, init?: ResponseInit) {
+  const res = NextResponse.json(body, init);
+  Object.entries(corsHeaders).forEach(([k, v]) => res.headers.set(k, v));
+  return res;
+}
+
+export async function OPTIONS() {
+  return new NextResponse(null, { status: 204, headers: corsHeaders });
+}
 
 export async function GET(request: Request) {
   const authUser = await authenticateRequest(request);
   if (!authUser) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return withCors({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const supabase = await createClient();
+  const supabase = createAdminClient();
   const { data, error } = await supabase
     .from("github_projects")
     .select("*")
@@ -16,16 +32,16 @@ export async function GET(request: Request) {
     .order("created_at", { ascending: false });
 
   if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return withCors({ error: error.message }, { status: 500 });
   }
 
-  return NextResponse.json({ projects: data ?? [] });
+  return withCors({ projects: data ?? [] });
 }
 
 export async function POST(request: Request) {
   const authUser = await authenticateRequest(request);
   if (!authUser) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return withCors({ error: "Unauthorized" }, { status: 401 });
   }
 
   const body = await request.json();
@@ -35,13 +51,10 @@ export async function POST(request: Request) {
     typeof body.display_name === "string" ? body.display_name.trim() : "";
 
   if (!owner || !repo) {
-    return NextResponse.json(
-      { error: "owner and repo are required" },
-      { status: 400 }
-    );
+    return withCors({ error: "owner and repo are required" }, { status: 400 });
   }
 
-  const supabase = await createClient();
+  const supabase = createAdminClient();
   const { data, error } = await supabase
     .from("github_projects")
     .insert({
@@ -54,25 +67,25 @@ export async function POST(request: Request) {
     .single();
 
   if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return withCors({ error: error.message }, { status: 500 });
   }
 
-  return NextResponse.json({ project: data }, { status: 201 });
+  return withCors({ project: data }, { status: 201 });
 }
 
 export async function DELETE(request: Request) {
   const authUser = await authenticateRequest(request);
   if (!authUser) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return withCors({ error: "Unauthorized" }, { status: 401 });
   }
 
   const body = await request.json();
   const id = typeof body.id === "string" ? body.id : "";
   if (!id) {
-    return NextResponse.json({ error: "id is required" }, { status: 400 });
+    return withCors({ error: "id is required" }, { status: 400 });
   }
 
-  const supabase = await createClient();
+  const supabase = createAdminClient();
   const { error } = await supabase
     .from("github_projects")
     .delete()
@@ -80,8 +93,8 @@ export async function DELETE(request: Request) {
     .eq("user_id", authUser.userId);
 
   if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return withCors({ error: error.message }, { status: 500 });
   }
 
-  return NextResponse.json({ success: true });
+  return withCors({ success: true });
 }

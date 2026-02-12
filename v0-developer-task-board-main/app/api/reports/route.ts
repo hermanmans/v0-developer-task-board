@@ -1,15 +1,31 @@
 import { authenticateRequest } from "@/lib/auth";
-import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { NextRequest, NextResponse } from "next/server";
+
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "GET,POST,PATCH,PUT,DELETE,OPTIONS",
+  "Access-Control-Allow-Headers": "Authorization,Content-Type,apikey,x-client-info",
+};
+
+function withCors(body: unknown, init?: ResponseInit) {
+  const res = NextResponse.json(body, init);
+  Object.entries(corsHeaders).forEach(([k, v]) => res.headers.set(k, v));
+  return res;
+}
+
+export async function OPTIONS() {
+  return new NextResponse(null, { status: 204, headers: corsHeaders });
+}
 
 export async function GET(request: NextRequest) {
   const auth = await authenticateRequest(request);
   if (!auth) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return withCors({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const supabase = await createClient();
-  const { data, error } = await supabase
+  const admin = createAdminClient();
+  const { data, error } = await admin
     .from("reports")
     .select("*")
     .eq("user_id", auth.userId)
@@ -17,30 +33,30 @@ export async function GET(request: NextRequest) {
     .order("created_at", { ascending: false });
 
   if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return withCors({ error: error.message }, { status: 500 });
   }
 
-  return NextResponse.json(data);
+  return withCors(data);
 }
 
 export async function POST(request: NextRequest) {
   const auth = await authenticateRequest(request);
   if (!auth) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return withCors({ error: "Unauthorized" }, { status: 401 });
   }
 
   const body = await request.json();
   const { title, description, type, priority, reporter_name } = body;
 
   if (!title || !type || !priority) {
-    return NextResponse.json(
+    return withCors(
       { error: "Title, type, and priority are required" },
       { status: 400 }
     );
   }
 
-  const supabase = await createClient();
-  const { data, error } = await supabase
+  const admin = createAdminClient();
+  const { data, error } = await admin
     .from("reports")
     .insert({
       title,
@@ -56,8 +72,8 @@ export async function POST(request: NextRequest) {
     .single();
 
   if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return withCors({ error: error.message }, { status: 500 });
   }
 
-  return NextResponse.json(data, { status: 201 });
+  return withCors(data, { status: 201 });
 }

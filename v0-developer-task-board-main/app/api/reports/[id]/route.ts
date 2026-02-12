@@ -1,6 +1,22 @@
 import { authenticateRequest } from "@/lib/auth";
-import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { NextRequest, NextResponse } from "next/server";
+
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "GET,POST,PATCH,PUT,DELETE,OPTIONS",
+  "Access-Control-Allow-Headers": "Authorization,Content-Type,apikey,x-client-info",
+};
+
+function withCors(body: unknown, init?: ResponseInit) {
+  const res = NextResponse.json(body, init);
+  Object.entries(corsHeaders).forEach(([k, v]) => res.headers.set(k, v));
+  return res;
+}
+
+export async function OPTIONS() {
+  return new NextResponse(null, { status: 204, headers: corsHeaders });
+}
 
 export async function PATCH(
   request: NextRequest,
@@ -8,12 +24,12 @@ export async function PATCH(
 ) {
   const auth = await authenticateRequest(request);
   if (!auth) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return withCors({ error: "Unauthorized" }, { status: 401 });
   }
 
   const { id } = await params;
   const body = await request.json();
-  const supabase = await createClient();
+  const supabase = createAdminClient();
 
   const { data, error } = await supabase
     .from("reports")
@@ -24,10 +40,10 @@ export async function PATCH(
     .single();
 
   if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return withCors({ error: error.message }, { status: 500 });
   }
 
-  return NextResponse.json(data);
+  return withCors(data);
 }
 
 export async function DELETE(
@@ -36,11 +52,11 @@ export async function DELETE(
 ) {
   const auth = await authenticateRequest(request);
   if (!auth) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return withCors({ error: "Unauthorized" }, { status: 401 });
   }
 
   const { id } = await params;
-  const supabase = await createClient();
+  const supabase = createAdminClient();
 
   const { error } = await supabase
     .from("reports")
@@ -49,8 +65,8 @@ export async function DELETE(
     .eq("user_id", auth.userId);
 
   if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return withCors({ error: error.message }, { status: 500 });
   }
 
-  return NextResponse.json({ success: true });
+  return withCors({ success: true });
 }

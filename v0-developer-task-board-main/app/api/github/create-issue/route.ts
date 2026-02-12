@@ -1,7 +1,23 @@
 import { NextResponse } from "next/server";
 import { authenticateRequest } from "@/lib/auth";
-import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { decryptSecret } from "@/lib/crypto";
+
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "GET,POST,PATCH,PUT,DELETE,OPTIONS",
+  "Access-Control-Allow-Headers": "Authorization,Content-Type,apikey,x-client-info",
+};
+
+function withCors(body: unknown, init?: ResponseInit) {
+  const res = NextResponse.json(body, init);
+  Object.entries(corsHeaders).forEach(([k, v]) => res.headers.set(k, v));
+  return res;
+}
+
+export async function OPTIONS() {
+  return new NextResponse(null, { status: 204, headers: corsHeaders });
+}
 
 export async function POST(req: Request) {
   try {
@@ -11,7 +27,7 @@ export async function POST(req: Request) {
     let token = process.env.GITHUB_TOKEN || null;
     const authUser = await authenticateRequest(req);
     if (authUser) {
-      const supabase = await createClient();
+      const supabase = createAdminClient();
       const { data } = await supabase
         .from("profiles")
         .select("github_token_enc")
@@ -22,14 +38,14 @@ export async function POST(req: Request) {
       }
     }
     if (!token) {
-      return NextResponse.json(
+      return withCors(
         { error: "GitHub token not configured. Add it in Profile settings." },
         { status: 500 }
       );
     }
 
     if (!owner || !repo || !title) {
-      return NextResponse.json({ error: "owner, repo and title are required" }, { status: 400 });
+      return withCors({ error: "owner, repo and title are required" }, { status: 400 });
     }
 
     const res = await fetch(`https://api.github.com/repos/${owner}/${repo}/issues`, {
@@ -49,11 +65,11 @@ export async function POST(req: Request) {
 
     const json = await res.json();
     if (!res.ok) {
-      return NextResponse.json({ error: json }, { status: res.status });
+      return withCors({ error: json }, { status: res.status });
     }
 
-    return NextResponse.json({ issue: json });
+    return withCors({ issue: json });
   } catch (err: any) {
-    return NextResponse.json({ error: err.message || String(err) }, { status: 500 });
+    return withCors({ error: err.message || String(err) }, { status: 500 });
   }
 }

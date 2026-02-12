@@ -5,6 +5,19 @@ export async function updateSession(request: NextRequest) {
   let supabaseResponse = NextResponse.next({
     request,
   })
+  const pathname = request.nextUrl.pathname
+  const isApiRoute = pathname.startsWith('/api')
+  const isPreflight = request.method === 'OPTIONS'
+
+  const corsHeaders = {
+    'Access-Control-Allow-Origin': request.headers.get('origin') ?? '*',
+    'Access-Control-Allow-Methods': 'GET,POST,PATCH,PUT,DELETE,OPTIONS',
+    'Access-Control-Allow-Headers': 'Authorization,Content-Type,apikey,x-client-info',
+  }
+
+  if (isApiRoute && isPreflight) {
+    return new NextResponse(null, { status: 204, headers: corsHeaders })
+  }
 
   // With Fluid compute, don't put this client in a global environment
   // variable. Always create a new one on each request.
@@ -50,8 +63,15 @@ export async function updateSession(request: NextRequest) {
       error instanceof Error ? error.message : String(error))
   }
 
-  const isAuthPage = request.nextUrl.pathname.startsWith('/auth')
-  const isPublicPage = request.nextUrl.pathname === '/'
+  const isAuthPage = pathname.startsWith('/auth')
+  const isPublicPage = pathname === '/'
+
+  if (isApiRoute) {
+    Object.entries(corsHeaders).forEach(([key, value]) => {
+      supabaseResponse.headers.set(key, value)
+    })
+    return supabaseResponse
+  }
 
   if (!user && !isAuthPage && !isPublicPage) {
     const url = request.nextUrl.clone()

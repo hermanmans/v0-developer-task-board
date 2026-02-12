@@ -3,13 +3,32 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { resolveBoardOwnerUserId } from "@/lib/team-board";
 import { NextResponse } from "next/server";
 
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "GET,POST,PATCH,PUT,DELETE,OPTIONS",
+  "Access-Control-Allow-Headers":
+    "Authorization,Content-Type,apikey,x-client-info",
+};
+
+function jsonWithCors(body: unknown, init?: ResponseInit) {
+  const response = NextResponse.json(body, init);
+  Object.entries(corsHeaders).forEach(([key, value]) =>
+    response.headers.set(key, value)
+  );
+  return response;
+}
+
+export async function OPTIONS() {
+  return new NextResponse(null, { status: 204, headers: corsHeaders });
+}
+
 export async function PATCH(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const authUser = await authenticateRequest(request);
   if (!authUser) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return jsonWithCors({ error: "Unauthorized" }, { status: 401 });
   }
 
   const { id } = await params;
@@ -26,10 +45,10 @@ export async function PATCH(
     .single();
 
   if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return jsonWithCors({ error: error.message }, { status: 500 });
   }
 
-  return NextResponse.json(data);
+  return jsonWithCors(data);
 }
 
 export async function DELETE(
@@ -38,7 +57,7 @@ export async function DELETE(
 ) {
   const authUser = await authenticateRequest(request);
   if (!authUser) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return jsonWithCors({ error: "Unauthorized" }, { status: 401 });
   }
 
   const { id } = await params;
@@ -52,8 +71,8 @@ export async function DELETE(
     .eq("user_id", boardOwnerUserId);
 
   if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return jsonWithCors({ error: error.message }, { status: 500 });
   }
 
-  return NextResponse.json({ success: true });
+  return jsonWithCors({ success: true });
 }

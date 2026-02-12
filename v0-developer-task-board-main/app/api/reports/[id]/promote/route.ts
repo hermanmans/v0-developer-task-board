@@ -1,6 +1,22 @@
 import { authenticateRequest } from "@/lib/auth";
-import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { NextRequest, NextResponse } from "next/server";
+
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "GET,POST,PATCH,PUT,DELETE,OPTIONS",
+  "Access-Control-Allow-Headers": "Authorization,Content-Type,apikey,x-client-info",
+};
+
+function withCors(body: unknown, init?: ResponseInit) {
+  const res = NextResponse.json(body, init);
+  Object.entries(corsHeaders).forEach(([k, v]) => res.headers.set(k, v));
+  return res;
+}
+
+export async function OPTIONS() {
+  return new NextResponse(null, { status: 204, headers: corsHeaders });
+}
 
 export async function POST(
   request: NextRequest,
@@ -8,11 +24,11 @@ export async function POST(
 ) {
   const auth = await authenticateRequest(request);
   if (!auth) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return withCors({ error: "Unauthorized" }, { status: 401 });
   }
 
   const { id } = await params;
-  const supabase = await createClient();
+  const supabase = createAdminClient();
 
   // Get the report
   const { data: report, error: reportError } = await supabase
@@ -23,14 +39,11 @@ export async function POST(
     .single();
 
   if (reportError || !report) {
-    return NextResponse.json({ error: "Report not found" }, { status: 404 });
+    return withCors({ error: "Report not found" }, { status: 404 });
   }
 
   if (report.status === "promoted") {
-    return NextResponse.json(
-      { error: "Report already promoted" },
-      { status: 400 }
-    );
+    return withCors({ error: "Report already promoted" }, { status: 400 });
   }
 
   // Get next task key
@@ -63,7 +76,7 @@ export async function POST(
     .single();
 
   if (taskError) {
-    return NextResponse.json({ error: taskError.message }, { status: 500 });
+    return withCors({ error: taskError.message }, { status: 500 });
   }
 
   // Update report status to promoted with link to the task
@@ -73,8 +86,8 @@ export async function POST(
     .eq("id", id);
 
   if (updateError) {
-    return NextResponse.json({ error: updateError.message }, { status: 500 });
+    return withCors({ error: updateError.message }, { status: 500 });
   }
 
-  return NextResponse.json({ task, report_id: id }, { status: 201 });
+  return withCors({ task, report_id: id }, { status: 201 });
 }

@@ -102,7 +102,7 @@ export function LoginScreen({ onSwitchToSignup }: LoginScreenProps) {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: "#f8fafc",
+    backgroundColor: "#0f172a",
   },
   container: {
     flex: 1,
@@ -129,9 +129,9 @@ const styles = StyleSheet.create({
   },
   card: {
     borderWidth: 1,
-    borderColor: "#e2e8f0",
+    borderColor: "#334155",
     borderRadius: 12,
-    backgroundColor: "#ffffff",
+    backgroundColor: "#111827",
     padding: 16,
     gap: 12,
   },
@@ -139,25 +139,25 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   label: {
-    color: "#0f172a",
+    color: "#e2e8f0",
     fontWeight: "600",
     fontSize: 13,
   },
   title: {
-    color: "#0f172a",
+    color: "#e2e8f0",
     fontSize: 22,
     fontWeight: "700",
   },
   subtitle: {
-    color: "#64748b",
+    color: "#94a3b8",
     fontSize: 13,
   },
   input: {
     borderWidth: 1,
-    borderColor: "#d1d5db",
+    borderColor: "#334155",
     borderRadius: 10,
-    backgroundColor: "#ffffff",
-    color: "#0f172a",
+    backgroundColor: "#111827",
+    color: "#e2e8f0",
     paddingHorizontal: 12,
     paddingVertical: 10,
     fontSize: 14,
@@ -190,7 +190,7 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
   },
   linkText: {
-    color: "#2563eb",
+    color: "#93c5fd",
     fontWeight: "600",
     fontSize: 12,
   },

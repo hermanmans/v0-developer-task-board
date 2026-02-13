@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
-  Alert,
+  Modal,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -11,6 +11,7 @@ import {
   TextInput,
   View,
 } from "react-native";
+import { BlurView } from "expo-blur";
 import type { GithubProject, Profile } from "../lib/types";
 import {
   addGithubProject,
@@ -19,6 +20,7 @@ import {
   removeGithubProject,
   updateProfile,
 } from "../services/profile";
+import { Toast, useToast } from "../lib/use-toast";
 
 type ProfileScreenProps = {
   accessToken: string;
@@ -46,6 +48,8 @@ export function ProfileScreen({ accessToken, email }: ProfileScreenProps) {
   const [projectOwner, setProjectOwner] = useState("");
   const [projectRepo, setProjectRepo] = useState("");
   const [projectLabel, setProjectLabel] = useState("");
+  const [confirmProject, setConfirmProject] = useState<GithubProject | null>(null);
+  const { toastMsg, showToast, hideToast } = useToast();
 
   const loadData = useCallback(async () => {
     setError(null);
@@ -78,6 +82,8 @@ export function ProfileScreen({ accessToken, email }: ProfileScreenProps) {
       .finally(() => setIsLoading(false));
   }, [loadData]);
 
+  useEffect(() => () => hideToast(), [hideToast]);
+
   const onRefresh = useCallback(async () => {
     setIsRefreshing(true);
     try {
@@ -100,7 +106,7 @@ export function ProfileScreen({ accessToken, email }: ProfileScreenProps) {
 
   const onSaveProfile = async () => {
     if (!form.disclaimer_accepted || !form.popia_accepted) {
-      Alert.alert("Required", "Please accept Disclaimer and POPIA consent.");
+      showToast("Please accept Disclaimer and POPIA consent.");
       return;
     }
     setIsSaving(true);
@@ -119,9 +125,11 @@ export function ProfileScreen({ accessToken, email }: ProfileScreenProps) {
       });
       setProfile(updated ?? null);
       setForm((prev) => ({ ...prev, githubToken: "" }));
-      Alert.alert("Saved", "Profile updated.");
+      showToast("Profile updated");
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Failed to update profile");
+      const msg = err instanceof Error ? err.message : "Failed to update profile";
+      setError(msg);
+      showToast(msg);
     } finally {
       setIsSaving(false);
     }
@@ -129,7 +137,7 @@ export function ProfileScreen({ accessToken, email }: ProfileScreenProps) {
 
   const onAddProject = async () => {
     if (!projectOwner.trim() || !projectRepo.trim()) {
-      Alert.alert("Required", "Owner and repo are required.");
+      showToast("Owner and repo are required.");
       return;
     }
     try {
@@ -142,27 +150,16 @@ export function ProfileScreen({ accessToken, email }: ProfileScreenProps) {
       setProjectRepo("");
       setProjectLabel("");
       setProjects(await getGithubProjects(accessToken));
+      showToast("Project added");
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Failed to add project");
+      const msg = err instanceof Error ? err.message : "Failed to add project";
+      setError(msg);
+      showToast(msg);
     }
   };
 
-  const onRemoveProject = (id: string) => {
-    Alert.alert("Remove Project", "Remove this GitHub project?", [
-      { text: "Cancel", style: "cancel" },
-      {
-        text: "Remove",
-        style: "destructive",
-        onPress: async () => {
-          try {
-            await removeGithubProject(accessToken, id);
-            setProjects(await getGithubProjects(accessToken));
-          } catch (err: unknown) {
-            setError(err instanceof Error ? err.message : "Failed to remove project");
-          }
-        },
-      },
-    ]);
+  const onRemoveProject = (project: GithubProject) => {
+    setConfirmProject(project);
   };
 
   if (isLoading) {
@@ -289,9 +286,9 @@ export function ProfileScreen({ accessToken, email }: ProfileScreenProps) {
                 {project.owner}/{project.repo}
               </Text>
             </View>
-            <Pressable onPress={() => onRemoveProject(project.id)} style={styles.projectDelete}>
-              <Text style={styles.projectDeleteText}>Remove</Text>
-            </Pressable>
+              <Pressable onPress={() => onRemoveProject(project)} style={styles.projectDelete}>
+                <Text style={styles.projectDeleteText}>Remove</Text>
+              </Pressable>
           </View>
         ))}
       </View>
@@ -323,6 +320,46 @@ export function ProfileScreen({ accessToken, email }: ProfileScreenProps) {
       >
         <Text style={styles.saveButtonText}>{isSaving ? "Saving..." : "Save Profile"}</Text>
       </Pressable>
+
+      <Modal visible={Boolean(confirmProject)} animationType="fade" transparent>
+        <View style={styles.overlay}>
+          <BlurView style={styles.blur} intensity={80} tint="dark" />
+          <View style={styles.modal}>
+            <Text style={styles.modalTitle}>Remove GitHub project?</Text>
+            <Text style={styles.desc}>
+              {confirmProject
+                ? confirmProject.display_name || `${confirmProject.owner}/${confirmProject.repo}`
+                : ""}
+            </Text>
+            <View style={styles.rowEnd}>
+              <Pressable style={styles.ghost} onPress={() => setConfirmProject(null)}>
+                <Text style={styles.ghostText}>Cancel</Text>
+              </Pressable>
+              <Pressable
+                style={[styles.primary, styles.danger]}
+                onPress={async () => {
+                  const project = confirmProject;
+                  setConfirmProject(null);
+                  if (!project) return;
+                  try {
+                    await removeGithubProject(accessToken, project.id);
+                    setProjects(await getGithubProjects(accessToken));
+                    showToast("Project removed");
+                  } catch (err: unknown) {
+                    const msg = err instanceof Error ? err.message : "Failed to remove project";
+                    setError(msg);
+                    showToast(msg);
+                  }
+                }}
+              >
+                <Text style={styles.primaryText}>Remove</Text>
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      <Toast message={toastMsg} />
     </ScrollView>
   );
 }
@@ -330,7 +367,7 @@ export function ProfileScreen({ accessToken, email }: ProfileScreenProps) {
 const styles = StyleSheet.create({
   page: {
     flex: 1,
-    backgroundColor: "#f8fafc",
+    backgroundColor: "#0f172a",
   },
   content: {
     padding: 12,
@@ -339,44 +376,44 @@ const styles = StyleSheet.create({
   },
   loadingWrap: {
     flex: 1,
-    backgroundColor: "#f8fafc",
+    backgroundColor: "#0f172a",
     alignItems: "center",
     justifyContent: "center",
   },
   card: {
     borderWidth: 1,
-    borderColor: "#e2e8f0",
+    borderColor: "#334155",
     borderRadius: 12,
-    backgroundColor: "#ffffff",
+    backgroundColor: "#111827",
     padding: 12,
     gap: 8,
   },
   title: {
-    color: "#0f172a",
+    color: "#e2e8f0",
     fontSize: 18,
     fontWeight: "700",
   },
   sectionTitle: {
-    color: "#0f172a",
+    color: "#e2e8f0",
     fontSize: 15,
     fontWeight: "700",
   },
   subtitle: {
-    color: "#64748b",
+    color: "#94a3b8",
     fontSize: 12,
   },
   error: {
-    color: "#dc2626",
+    color: "#f87171",
     fontSize: 12,
   },
   input: {
     borderWidth: 1,
-    borderColor: "#d1d5db",
+    borderColor: "#334155",
     borderRadius: 8,
-    backgroundColor: "#ffffff",
+    backgroundColor: "#111827",
     paddingHorizontal: 10,
     paddingVertical: 9,
-    color: "#0f172a",
+    color: "#e2e8f0",
     fontSize: 13,
   },
   textArea: {
@@ -387,20 +424,26 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     gap: 6,
   },
+  rowEnd: {
+    flexDirection: "row",
+    justifyContent: "flex-end",
+    alignItems: "center",
+    gap: 8,
+  },
   rowInput: {
     flex: 1,
   },
   actionButton: {
     alignSelf: "flex-start",
     borderWidth: 1,
-    borderColor: "#d1d5db",
+    borderColor: "#475569",
     borderRadius: 8,
-    backgroundColor: "#f8fafc",
+    backgroundColor: "#111827",
     paddingHorizontal: 10,
     paddingVertical: 8,
   },
   actionButtonText: {
-    color: "#334155",
+    color: "#cbd5e1",
     fontSize: 12,
     fontWeight: "600",
   },
@@ -409,30 +452,30 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 8,
     borderWidth: 1,
-    borderColor: "#e2e8f0",
+    borderColor: "#334155",
     borderRadius: 8,
-    backgroundColor: "#f8fafc",
+    backgroundColor: "#111827",
     padding: 8,
   },
   projectTitle: {
-    color: "#0f172a",
+    color: "#e2e8f0",
     fontSize: 12,
     fontWeight: "600",
   },
   projectMeta: {
-    color: "#64748b",
+    color: "#94a3b8",
     fontSize: 11,
   },
   projectDelete: {
     borderWidth: 1,
-    borderColor: "#fecaca",
+    borderColor: "#fca5a5",
     borderRadius: 8,
-    backgroundColor: "#fef2f2",
+    backgroundColor: "#7f1d1d",
     paddingHorizontal: 8,
     paddingVertical: 6,
   },
   projectDeleteText: {
-    color: "#b91c1c",
+    color: "#fecdd3",
     fontSize: 11,
     fontWeight: "700",
   },
@@ -442,7 +485,7 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
   },
   switchLabel: {
-    color: "#334155",
+    color: "#e2e8f0",
     fontSize: 13,
     fontWeight: "500",
   },
@@ -462,5 +505,59 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: "700",
   },
+  overlay: {
+    flex: 1,
+    justifyContent: "center",
+    padding: 14,
+    backgroundColor: "rgba(0,0,0,0.7)",
+  },
+  blur: {
+    ...StyleSheet.absoluteFillObject,
+  },
+  modal: {
+    borderWidth: 1,
+    borderColor: "#334155",
+    borderRadius: 12,
+    backgroundColor: "#0f172a",
+    padding: 14,
+    gap: 10,
+  },
+  modalTitle: {
+    color: "#e2e8f0",
+    fontSize: 17,
+    fontWeight: "700",
+  },
+  desc: {
+    color: "#94a3b8",
+    fontSize: 13,
+  },
+  ghost: {
+    height: 36,
+    borderWidth: 1,
+    borderColor: "#475569",
+    borderRadius: 8,
+    backgroundColor: "#111827",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 12,
+  },
+  ghostText: {
+    color: "#e2e8f0",
+    fontWeight: "700",
+  },
+  primary: {
+    height: 36,
+    borderRadius: 8,
+    backgroundColor: "#2563eb",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 14,
+  },
+  primaryText: {
+    color: "#ffffff",
+    fontWeight: "700",
+  },
+  danger: {
+    backgroundColor: "#dc2626",
+  },
 });
-

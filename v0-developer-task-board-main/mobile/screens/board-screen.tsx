@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Linking,
@@ -12,6 +12,7 @@ import {
   TextInput,
   View,
 } from "react-native";
+import { BlurView } from "expo-blur";
 import { useAuth } from "../context/auth-context";
 import { createGithubBranch, createGithubIssue } from "../services/github";
 import { getGithubProjects } from "../services/profile";
@@ -33,6 +34,7 @@ import type {
   TaskType,
 } from "../lib/types";
 import { STATUS_COLUMNS } from "../lib/types";
+import { Toast, useToast } from "../lib/use-toast";
 
 const PRIORITY_LABEL: Record<TaskPriority, string> = {
   critical: "Critical",
@@ -99,8 +101,7 @@ export function BoardScreen() {
   const [createBranchToggle, setCreateBranchToggle] = useState(false);
   const [branchName, setBranchName] = useState("");
   const [confirmTask, setConfirmTask] = useState<Task | null>(null);
-  const [toastMsg, setToastMsg] = useState<string | null>(null);
-  const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const { toastMsg, showToast, hideToast } = useToast();
 
   const [form, setForm] = useState({
     title: "",
@@ -117,12 +118,6 @@ export function BoardScreen() {
     setTasks(await getTasks(accessToken));
   }, [accessToken]);
 
-  const showToast = (msg: string) => {
-    if (toastTimer.current) clearTimeout(toastTimer.current);
-    setToastMsg(msg);
-    toastTimer.current = setTimeout(() => setToastMsg(null), 2000);
-  };
-
   useEffect(() => {
     if (!accessToken) return;
     Promise.all([loadTasks(), getGithubProjects(accessToken).then(setProjects)])
@@ -130,9 +125,7 @@ export function BoardScreen() {
       .finally(() => setIsLoading(false));
   }, [accessToken, loadTasks]);
 
-  useEffect(() => () => {
-    if (toastTimer.current) clearTimeout(toastTimer.current);
-  }, []);
+  useEffect(() => () => hideToast(), [hideToast]);
 
   const onRefresh = useCallback(async () => {
     setIsRefreshing(true);
@@ -270,7 +263,7 @@ export function BoardScreen() {
     if (!accessToken || !viewingTask) return;
     const parsed = parseRepo(githubRepo);
     if (!parsed || !issueTitle.trim()) {
-      Alert.alert("Invalid", "Use owner/repo and issue title.");
+      showToast("Use owner/repo and issue title.");
       return;
     }
     try {
@@ -300,20 +293,21 @@ export function BoardScreen() {
         github_repo: parsed.clean,
         github_issue_url: issue?.html_url || issue?.url || null,
         github_issue_number: typeof issue?.number === "number" ? issue.number : null,
-        github_branch: githubBranch,
-      } as Partial<Task>);
-      await loadTasks();
-      setShowGithubForm(false);
-      setViewingTask({
+          github_branch: githubBranch,
+        } as Partial<Task>);
+        await loadTasks();
+        setShowGithubForm(false);
+        setViewingTask({
         ...viewingTask,
         github_repo: parsed.clean,
         github_issue_url: issue?.html_url || issue?.url || null,
         github_issue_number: typeof issue?.number === "number" ? issue.number : null,
         github_branch: githubBranch,
       });
-      Alert.alert("Done", "GitHub issue created and linked.");
+      showToast("GitHub issue created and linked.");
     } catch (e: unknown) {
-      Alert.alert("GitHub error", e instanceof Error ? e.message : "Unknown error");
+      const msg = e instanceof Error ? e.message : "GitHub issue failed";
+      showToast(msg);
     }
   };
 
@@ -328,7 +322,7 @@ export function BoardScreen() {
       <ScrollView style={s.page} contentContainerStyle={s.content} refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={onRefresh} />}>
         <View style={s.card}>
           <View style={s.rowBetween}>
-            <Text style={s.title}>Task Board</Text>
+            <Text style={s.title}>Task Bored</Text>
             <View style={s.row}><Pressable style={s.primary} onPress={openCreate}><Text style={s.primaryText}>New Task</Text></Pressable><Pressable style={s.ghost} onPress={() => signOut()}><Text style={s.ghostText}>Sign out</Text></Pressable></View>
           </View>
           <Text style={s.sub}>{user?.email}</Text>
@@ -414,7 +408,9 @@ export function BoardScreen() {
       </Modal>
 
       <Modal visible={Boolean(viewingTask)} animationType="slide" transparent>
-        <View style={s.overlay}><View style={[s.modal, s.bigModal]}>
+        <View style={s.overlay}>
+          <BlurView style={s.blur} intensity={80} tint="dark" />
+          <View style={[s.modal, s.bigModal]}>
           <View style={s.rowBetween}><View style={{ flex: 1 }}><Text style={s.modalTitle}>{viewingTask?.title}</Text><Text style={s.sub}>{viewingTask?.task_key} | {viewingTask?.status}</Text></View><Pressable style={s.ghost} onPress={() => setViewingTask(null)}><Text style={s.ghostText}>Close</Text></Pressable></View>
           {viewingTask?.description ? <Text style={s.desc}>{viewingTask.description}</Text> : null}
           <View style={s.rowWrap}><Pressable style={s.smallBtn} onPress={() => openEdit(viewingTask!)}><Text style={s.smallTxt}>Edit</Text></Pressable><Pressable style={[s.smallBtn, s.smallDel]} onPress={() => removeTask(viewingTask!)}><Text style={s.smallDelTxt}>Delete</Text></Pressable><Pressable style={s.smallBtn} onPress={() => setShowGithubForm((p) => !p)}><Text style={s.smallTxt}>GitHub</Text></Pressable></View>
@@ -450,11 +446,13 @@ export function BoardScreen() {
           )}
           <TextInput style={[s.input, s.area]} placeholder="Write a comment..." placeholderTextColor="#64748b" multiline value={commentDraft} onChangeText={setCommentDraft} />
           <Pressable style={s.primary} onPress={postComment}><Text style={s.primaryText}>Post Comment</Text></Pressable>
-        </View></View>
+        </View>
+        </View>
       </Modal>
 
       <Modal visible={Boolean(confirmTask)} animationType="fade" transparent>
         <View style={s.overlay}>
+          <BlurView style={s.blur} intensity={80} tint="dark" />
           <View style={s.modal}>
             <Text style={s.modalTitle}>Delete task?</Text>
             <Text style={s.desc}>{confirmTask?.title}</Text>
@@ -476,60 +474,55 @@ export function BoardScreen() {
         </View>
       </Modal>
 
-      {toastMsg ? (
-        <View style={s.toast}>
-          <Text style={s.toastText}>{toastMsg}</Text>
-        </View>
-      ) : null}
+      {toastMsg ? <Toast message={toastMsg} /> : null}
     </SafeAreaView>
   );
 }
 
 const s = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: "#f8fafc" },
+  safe: { flex: 1, backgroundColor: "#0f172a" },
   page: { flex: 1 },
   content: { padding: 12, gap: 10, paddingBottom: 28 },
   center: { flex: 1, alignItems: "center", justifyContent: "center" },
-  card: { borderWidth: 1, borderColor: "#e2e8f0", borderRadius: 12, backgroundColor: "#fff", padding: 12, gap: 8 },
-  title: { color: "#0f172a", fontSize: 18, fontWeight: "700" },
-  sub: { color: "#64748b", fontSize: 12 },
-  err: { color: "#dc2626", fontSize: 12 },
+  card: { borderWidth: 1, borderColor: "#334155", borderRadius: 12, backgroundColor: "#111827", padding: 12, gap: 8 },
+  title: { color: "#e2e8f0", fontSize: 18, fontWeight: "700" },
+  sub: { color: "#94a3b8", fontSize: 12 },
+  err: { color: "#f87171", fontSize: 12 },
   row: { flexDirection: "row", alignItems: "center", gap: 6 },
   rowWrap: { flexDirection: "row", alignItems: "center", gap: 6, flexWrap: "wrap" },
   rowBetween: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 8 },
   rowEnd: { flexDirection: "row", justifyContent: "flex-end", gap: 8 },
-  input: { borderWidth: 1, borderColor: "#d1d5db", borderRadius: 8, backgroundColor: "#fff", paddingHorizontal: 10, paddingVertical: 9, fontSize: 13, color: "#0f172a" },
+  input: { borderWidth: 1, borderColor: "#334155", borderRadius: 8, backgroundColor: "#111827", paddingHorizontal: 10, paddingVertical: 9, fontSize: 13, color: "#e2e8f0" },
   area: { minHeight: 74, textAlignVertical: "top" },
   primary: { height: 34, borderRadius: 8, backgroundColor: "#2563eb", alignItems: "center", justifyContent: "center", paddingHorizontal: 12 },
   primaryText: { color: "#fff", fontWeight: "700", fontSize: 12 },
-  ghost: { height: 34, borderWidth: 1, borderColor: "#d1d5db", borderRadius: 8, backgroundColor: "#fff", alignItems: "center", justifyContent: "center", paddingHorizontal: 10 },
-  ghostText: { color: "#475569", fontSize: 12, fontWeight: "600" },
-  chip: { height: 32, borderWidth: 1, borderColor: "#d1d5db", borderRadius: 999, backgroundColor: "#fff", justifyContent: "center", paddingHorizontal: 10 },
-  chipText: { color: "#334155", fontSize: 11, fontWeight: "600" },
+  ghost: { height: 34, borderWidth: 1, borderColor: "#475569", borderRadius: 8, backgroundColor: "#111827", alignItems: "center", justifyContent: "center", paddingHorizontal: 10 },
+  ghostText: { color: "#e2e8f0", fontSize: 12, fontWeight: "600" },
+  chip: { height: 32, borderWidth: 1, borderColor: "#475569", borderRadius: 999, backgroundColor: "#111827", justifyContent: "center", paddingHorizontal: 10 },
+  chipText: { color: "#cbd5e1", fontSize: 11, fontWeight: "600" },
   stack: { flexDirection: "column", gap: 10 },
-  column: { borderWidth: 1, borderColor: "#e2e8f0", borderRadius: 12, backgroundColor: "#f8fafc", padding: 8, gap: 8 },
+  column: { borderWidth: 1, borderColor: "#334155", borderRadius: 12, backgroundColor: "#111827", padding: 8, gap: 8 },
   colHead: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
-  colTitle: { color: "#0f172a", fontSize: 13, fontWeight: "700" },
-  count: { color: "#64748b", fontSize: 12, fontWeight: "700" },
+  colTitle: { color: "#e2e8f0", fontSize: 13, fontWeight: "700" },
+  count: { color: "#94a3b8", fontSize: 12, fontWeight: "700" },
   empty: { color: "#94a3b8", fontSize: 12, textAlign: "center", paddingVertical: 8 },
-  task: { borderWidth: 1, borderColor: "#e2e8f0", borderLeftWidth: 4, borderRadius: 10, backgroundColor: "#fff", padding: 10, gap: 6 },
-  key: { color: "#64748b", fontSize: 11, fontWeight: "600" },
-  taskTitle: { color: "#0f172a", fontSize: 14, fontWeight: "700" },
-  desc: { color: "#64748b", fontSize: 12, lineHeight: 18 },
-  smallBtn: { borderWidth: 1, borderColor: "#d1d5db", borderRadius: 8, backgroundColor: "#f8fafc", paddingHorizontal: 9, paddingVertical: 7 },
-  smallTxt: { color: "#334155", fontSize: 11, fontWeight: "600" },
-  smallDel: { borderColor: "#fecaca", backgroundColor: "#fef2f2" },
-  smallDelTxt: { color: "#b91c1c", fontSize: 11, fontWeight: "700" },
-  overlay: { flex: 1, backgroundColor: "rgba(15,23,42,0.45)", justifyContent: "center", padding: 14 },
-  modal: { borderWidth: 1, borderColor: "#e2e8f0", borderRadius: 12, backgroundColor: "#fff", padding: 12, gap: 8, maxHeight: "85%" },
+  task: { borderWidth: 1, borderColor: "#334155", borderLeftWidth: 4, borderRadius: 10, backgroundColor: "#111827", padding: 10, gap: 6 },
+  key: { color: "#94a3b8", fontSize: 11, fontWeight: "600" },
+  taskTitle: { color: "#e2e8f0", fontSize: 14, fontWeight: "700" },
+  desc: { color: "#cbd5e1", fontSize: 12, lineHeight: 18 },
+  smallBtn: { borderWidth: 1, borderColor: "#475569", borderRadius: 8, backgroundColor: "#111827", paddingHorizontal: 9, paddingVertical: 7 },
+  smallTxt: { color: "#cbd5e1", fontSize: 11, fontWeight: "600" },
+  smallDel: { borderColor: "#fca5a5", backgroundColor: "#7f1d1d" },
+  smallDelTxt: { color: "#fecdd3", fontSize: 11, fontWeight: "700" },
+  overlay: { flex: 1, justifyContent: "center", padding: 14, backgroundColor: "rgba(0,0,0,0.7)" },
+  blur: { ...StyleSheet.absoluteFillObject },
+  modal: { borderWidth: 1, borderColor: "#334155", borderRadius: 12, backgroundColor: "#0f172a", padding: 12, gap: 8, maxHeight: "85%" },
   bigModal: { maxHeight: "92%" },
-  modalTitle: { color: "#0f172a", fontSize: 15, fontWeight: "700" },
-  innerCard: { borderWidth: 1, borderColor: "#e2e8f0", borderRadius: 8, backgroundColor: "#f8fafc", padding: 8, gap: 7 },
-  linkBtn: { borderWidth: 1, borderColor: "#bfdbfe", borderRadius: 8, backgroundColor: "#eff6ff", padding: 8 },
-  linkTxt: { color: "#1d4ed8", fontSize: 12, fontWeight: "700" },
-  comment: { borderWidth: 1, borderColor: "#e2e8f0", borderRadius: 8, backgroundColor: "#f8fafc", padding: 8, marginBottom: 6 },
-  commentMeta: { color: "#475569", fontSize: 11, fontWeight: "600" },
-  commentBody: { color: "#0f172a", fontSize: 12, marginTop: 4 },
-  toast: { position: "absolute", bottom: 30, left: 20, right: 20, borderRadius: 10, backgroundColor: "rgba(15,23,42,0.9)", padding: 12, alignItems: "center", pointerEvents: "none" },
-  toastText: { color: "#fff", fontWeight: "700" },
+  modalTitle: { color: "#e2e8f0", fontSize: 15, fontWeight: "700" },
+  innerCard: { borderWidth: 1, borderColor: "#334155", borderRadius: 8, backgroundColor: "#111827", padding: 8, gap: 7 },
+  linkBtn: { borderWidth: 1, borderColor: "#3b82f6", borderRadius: 8, backgroundColor: "#111827", padding: 8 },
+  linkTxt: { color: "#93c5fd", fontSize: 12, fontWeight: "700" },
+  comment: { borderWidth: 1, borderColor: "#334155", borderRadius: 8, backgroundColor: "#111827", padding: 8, marginBottom: 6 },
+  commentMeta: { color: "#94a3b8", fontSize: 11, fontWeight: "600" },
+  commentBody: { color: "#e2e8f0", fontSize: 12, marginTop: 4 },
 });

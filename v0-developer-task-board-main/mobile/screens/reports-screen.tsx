@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
-  Alert,
+  Modal,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -18,6 +18,8 @@ import {
   promoteReport,
   updateReport,
 } from "../services/reports";
+import { Toast, useToast } from "../lib/use-toast";
+import { BlurView } from "expo-blur";
 
 type ReportsScreenProps = {
   accessToken: string;
@@ -49,6 +51,8 @@ export function ReportsScreen({ accessToken }: ReportsScreenProps) {
   const [newType, setNewType] = useState<TaskType>("bug");
   const [newPriority, setNewPriority] = useState<TaskPriority>("medium");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [confirmReport, setConfirmReport] = useState<Report | null>(null);
+  const { toastMsg, showToast, hideToast } = useToast();
 
   const loadReports = useCallback(async () => {
     setError(null);
@@ -63,6 +67,8 @@ export function ReportsScreen({ accessToken }: ReportsScreenProps) {
       )
       .finally(() => setIsLoading(false));
   }, [loadReports]);
+
+  useEffect(() => () => hideToast(), [hideToast]);
 
   const onRefresh = useCallback(async () => {
     setIsRefreshing(true);
@@ -108,8 +114,11 @@ export function ReportsScreen({ accessToken }: ReportsScreenProps) {
       setNewType("bug");
       setNewPriority("medium");
       await loadReports();
+      showToast("Report submitted");
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Failed to create report");
+      const msg = err instanceof Error ? err.message : "Failed to create report";
+      setError(msg);
+      showToast(msg);
     } finally {
       setIsSubmitting(false);
     }
@@ -119,8 +128,11 @@ export function ReportsScreen({ accessToken }: ReportsScreenProps) {
     try {
       await promoteReport(accessToken, reportId);
       await loadReports();
+      showToast("Report promoted");
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Failed to promote report");
+      const msg = err instanceof Error ? err.message : "Failed to promote report";
+      setError(msg);
+      showToast(msg);
     }
   };
 
@@ -128,29 +140,16 @@ export function ReportsScreen({ accessToken }: ReportsScreenProps) {
     try {
       await updateReport(accessToken, reportId, { status: "dismissed" });
       await loadReports();
+      showToast("Report dismissed");
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Failed to dismiss report");
+      const msg = err instanceof Error ? err.message : "Failed to dismiss report";
+      setError(msg);
+      showToast(msg);
     }
   };
 
-  const onDelete = (reportId: string) => {
-    Alert.alert("Delete Report", "This action cannot be undone.", [
-      { text: "Cancel", style: "cancel" },
-      {
-        text: "Delete",
-        style: "destructive",
-        onPress: async () => {
-          try {
-            await deleteReport(accessToken, reportId);
-            await loadReports();
-          } catch (err: unknown) {
-            const msg = err instanceof Error ? err.message : "Failed to delete report";
-            setError(msg);
-            Alert.alert("Delete failed", msg);
-          }
-        },
-      },
-    ]);
+  const onDelete = (report: Report) => {
+    setConfirmReport(report);
   };
 
   if (isLoading) {
@@ -300,7 +299,7 @@ export function ReportsScreen({ accessToken }: ReportsScreenProps) {
                 <Text style={styles.actionButtonText}>Dismiss</Text>
               </Pressable>
             ) : null}
-            <Pressable style={[styles.actionButton, styles.deleteButton]} onPress={() => onDelete(report.id)}>
+            <Pressable style={[styles.actionButton, styles.deleteButton]} onPress={() => onDelete(report)}>
               <Text style={styles.deleteButtonText}>Delete</Text>
             </Pressable>
           </View>
@@ -312,6 +311,42 @@ export function ReportsScreen({ accessToken }: ReportsScreenProps) {
           <Text style={styles.subtitle}>No reports found.</Text>
         </View>
       ) : null}
+
+      <Modal visible={Boolean(confirmReport)} animationType="fade" transparent>
+        <View style={styles.overlay}>
+          <BlurView style={styles.blur} intensity={80} tint="dark" />
+          <View style={styles.modal}>
+            <Text style={styles.modalTitle}>Delete report?</Text>
+            <Text style={styles.desc}>{confirmReport?.title}</Text>
+            <View style={styles.rowEnd}>
+              <Pressable style={styles.ghost} onPress={() => setConfirmReport(null)}>
+                <Text style={styles.ghostText}>Cancel</Text>
+              </Pressable>
+              <Pressable
+                style={[styles.primary, styles.danger]}
+                onPress={async () => {
+                  const report = confirmReport;
+                  setConfirmReport(null);
+                  if (!report) return;
+                  try {
+                    await deleteReport(accessToken, report.id);
+                    await loadReports();
+                    showToast("Report deleted");
+                  } catch (err: unknown) {
+                    const msg = err instanceof Error ? err.message : "Failed to delete report";
+                    setError(msg);
+                    showToast(msg);
+                  }
+                }}
+              >
+                <Text style={styles.primaryText}>Delete</Text>
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      <Toast message={toastMsg} />
     </ScrollView>
   );
 }
@@ -319,7 +354,7 @@ export function ReportsScreen({ accessToken }: ReportsScreenProps) {
 const styles = StyleSheet.create({
   page: {
     flex: 1,
-    backgroundColor: "#f8fafc",
+    backgroundColor: "#0f172a",
   },
   content: {
     padding: 12,
@@ -328,44 +363,44 @@ const styles = StyleSheet.create({
   },
   loadingWrap: {
     flex: 1,
-    backgroundColor: "#f8fafc",
+    backgroundColor: "#0f172a",
     alignItems: "center",
     justifyContent: "center",
   },
   card: {
     borderWidth: 1,
-    borderColor: "#e2e8f0",
+    borderColor: "#334155",
     borderRadius: 12,
-    backgroundColor: "#ffffff",
+    backgroundColor: "#111827",
     padding: 12,
     gap: 8,
   },
   title: {
-    color: "#0f172a",
+    color: "#e2e8f0",
     fontSize: 18,
     fontWeight: "700",
   },
   sectionTitle: {
-    color: "#0f172a",
+    color: "#e2e8f0",
     fontSize: 15,
     fontWeight: "700",
   },
   subtitle: {
-    color: "#64748b",
+    color: "#94a3b8",
     fontSize: 12,
   },
   error: {
-    color: "#dc2626",
+    color: "#f87171",
     fontSize: 12,
   },
   input: {
     borderWidth: 1,
-    borderColor: "#d1d5db",
+    borderColor: "#334155",
     borderRadius: 8,
-    backgroundColor: "#ffffff",
+    backgroundColor: "#111827",
     paddingHorizontal: 10,
     paddingVertical: 9,
-    color: "#0f172a",
+    color: "#e2e8f0",
     fontSize: 13,
   },
   textArea: {
@@ -380,14 +415,14 @@ const styles = StyleSheet.create({
   },
   filterChip: {
     borderWidth: 1,
-    borderColor: "#d1d5db",
+    borderColor: "#475569",
     borderRadius: 999,
-    backgroundColor: "#ffffff",
+    backgroundColor: "#111827",
     paddingHorizontal: 10,
     paddingVertical: 6,
   },
   filterChipText: {
-    color: "#334155",
+    color: "#cbd5e1",
     fontSize: 11,
     fontWeight: "600",
   },
@@ -414,39 +449,100 @@ const styles = StyleSheet.create({
   },
   reportTitle: {
     flex: 1,
-    color: "#0f172a",
+    color: "#e2e8f0",
     fontSize: 14,
     fontWeight: "700",
   },
   reportDescription: {
-    color: "#475569",
+    color: "#cbd5e1",
     fontSize: 12,
   },
   reportMeta: {
-    color: "#64748b",
+    color: "#94a3b8",
     fontSize: 11,
     textTransform: "capitalize",
   },
   actionButton: {
     borderWidth: 1,
-    borderColor: "#d1d5db",
+    borderColor: "#475569",
     borderRadius: 8,
     paddingHorizontal: 9,
     paddingVertical: 7,
-    backgroundColor: "#f8fafc",
+    backgroundColor: "#111827",
   },
   actionButtonText: {
-    color: "#334155",
+    color: "#cbd5e1",
     fontSize: 11,
     fontWeight: "600",
   },
   deleteButton: {
-    borderColor: "#fecaca",
-    backgroundColor: "#fef2f2",
+    borderColor: "#fca5a5",
+    backgroundColor: "#7f1d1d",
   },
   deleteButtonText: {
-    color: "#b91c1c",
+    color: "#fecdd3",
     fontSize: 11,
     fontWeight: "700",
+  },
+  rowEnd: {
+    flexDirection: "row",
+    justifyContent: "flex-end",
+    alignItems: "center",
+    gap: 8,
+  },
+  overlay: {
+    flex: 1,
+    justifyContent: "center",
+    padding: 14,
+    backgroundColor: "rgba(0,0,0,0.7)",
+  },
+  blur: {
+    ...StyleSheet.absoluteFillObject,
+  },
+  modal: {
+    borderWidth: 1,
+    borderColor: "#334155",
+    borderRadius: 12,
+    backgroundColor: "#0f172a",
+    padding: 14,
+    gap: 10,
+  },
+  modalTitle: {
+    color: "#e2e8f0",
+    fontSize: 17,
+    fontWeight: "700",
+  },
+  desc: {
+    color: "#94a3b8",
+    fontSize: 13,
+  },
+  ghost: {
+    height: 36,
+    borderWidth: 1,
+    borderColor: "#475569",
+    borderRadius: 8,
+    backgroundColor: "#111827",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 12,
+  },
+  ghostText: {
+    color: "#e2e8f0",
+    fontWeight: "700",
+  },
+  primary: {
+    height: 36,
+    borderRadius: 8,
+    backgroundColor: "#2563eb",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 14,
+  },
+  primaryText: {
+    color: "#ffffff",
+    fontWeight: "700",
+  },
+  danger: {
+    backgroundColor: "#dc2626",
   },
 });

@@ -1,5 +1,5 @@
 {
-  "name": "my-project",
+  "name": "task-bored",
   "version": "0.1.0",
   "main": "node_modules/expo/AppEntry.js",
   "private": true,
@@ -66,6 +66,7 @@
     "clsx": "^2.1.1",
     "cmdk": "1.1.1",
     "date-fns": "4.1.0",
+    "expo-blur": "^12.11.2",
     "embla-carousel-react": "8.5.1",
     "expo": "^54.0.33",
     "input-otp": "1.4.1",

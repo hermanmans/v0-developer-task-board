@@ -8,7 +8,11 @@ type AuthContextValue = {
   accessToken: string | null;
   isLoading: boolean;
   signIn: (email: string, password: string) => Promise<void>;
-  signUp: (email: string, password: string) => Promise<void>;
+  signUp: (
+    email: string,
+    password: string,
+    metadata?: Record<string, boolean | string>
+  ) => Promise<void>;
   signOut: () => Promise<void>;
 };
 
@@ -59,10 +63,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         });
         if (error) throw error;
       },
-      signUp: async (email: string, password: string) => {
+      signUp: async (
+        email: string,
+        password: string,
+        metadata?: Record<string, boolean | string>
+      ) => {
         const { error } = await supabase.auth.signUp({
           email,
           password,
+          options: metadata ? { data: metadata } : undefined,
         });
         if (error) throw error;
       },

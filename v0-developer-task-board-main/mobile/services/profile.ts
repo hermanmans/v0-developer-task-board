@@ -1,8 +1,9 @@
-import type { GithubProject, Profile } from "../lib/types";
+import type { GithubProject, Profile, TeamMember } from "../lib/types";
 import { apiFetch, apiJson } from "./api";
 
 type ProfileResponse = { profile: Profile | null };
 type GithubProjectsResponse = { projects: GithubProject[] };
+type TeamMembersResponse = { members: TeamMember[] };
 
 export async function getProfile(accessToken: string) {
   const data = await apiJson<ProfileResponse>("/api/profile", accessToken, {
@@ -41,6 +42,13 @@ export async function getGithubProjects(accessToken: string) {
   return data.projects ?? [];
 }
 
+export async function getTeamMembers(accessToken: string) {
+  const data = await apiJson<TeamMembersResponse>("/api/team-members", accessToken, {
+    method: "GET",
+  });
+  return data.members ?? [];
+}
+
 export async function addGithubProject(
   accessToken: string,
   payload: { owner: string; repo: string; display_name?: string }
@@ -55,6 +63,13 @@ export async function removeGithubProject(accessToken: string, id: string) {
   await apiFetch("/api/github/projects", accessToken, {
     method: "DELETE",
     body: JSON.stringify({ id }),
+  });
+}
+
+export async function deleteMyAccount(accessToken: string, confirmText: string) {
+  await apiFetch("/api/account", accessToken, {
+    method: "DELETE",
+    body: JSON.stringify({ confirmText }),
   });
 }
 

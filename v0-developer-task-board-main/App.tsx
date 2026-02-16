@@ -14,6 +14,7 @@ import { BoardScreen } from "./mobile/screens/board-screen";
 import { SignupScreen } from "./mobile/screens/signup-screen";
 import { ReportsScreen } from "./mobile/screens/reports-screen";
 import { ProfileScreen } from "./mobile/screens/profile-screen";
+import { registerDevicePushToken } from "./mobile/services/notifications";
 
 type AuthMode = "login" | "signup";
 type AppTab = "board" | "reports" | "profile";
@@ -22,6 +23,13 @@ function AppContent() {
   const { user, accessToken, isLoading } = useAuth();
   const [authMode, setAuthMode] = React.useState<AuthMode>("login");
   const [activeTab, setActiveTab] = React.useState<AppTab>("board");
+
+  React.useEffect(() => {
+    if (!accessToken) return;
+    registerDevicePushToken(accessToken).catch(() => {
+      // non-blocking
+    });
+  }, [accessToken]);
 
   if (isLoading) {
     return (

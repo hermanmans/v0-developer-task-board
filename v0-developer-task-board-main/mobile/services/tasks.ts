@@ -72,3 +72,10 @@ export async function createTaskComment(
     body: JSON.stringify({ content }),
   });
 }
+
+export async function markTaskViewed(accessToken: string, taskId: string) {
+  await apiFetch(`/api/tasks/${taskId}/view`, accessToken, {
+    method: "POST",
+    body: JSON.stringify({}),
+  });
+}

@@ -64,7 +64,13 @@ export async function updateSession(request: NextRequest) {
   }
 
   const isAuthPage = pathname.startsWith('/auth')
-  const isPublicPage = pathname === '/'
+  const isLegalPage =
+    pathname === '/privacy-policy' ||
+    pathname === '/account-deletion' ||
+    pathname === '/popia' ||
+    pathname === '/disclaimer'
+  const isRootPage = pathname === '/'
+  const isPublicPage = isRootPage || isLegalPage
 
   if (isApiRoute) {
     Object.entries(corsHeaders).forEach(([key, value]) => {
@@ -80,7 +86,7 @@ export async function updateSession(request: NextRequest) {
   }
 
   // Redirect logged-in users away from auth pages and root to the board
-  if (user && (isAuthPage || isPublicPage)) {
+  if (user && (isAuthPage || isRootPage)) {
     const url = request.nextUrl.clone()
     url.pathname = '/board'
     return NextResponse.redirect(url)

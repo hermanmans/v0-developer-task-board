@@ -1,6 +1,8 @@
 import { authenticateRequest } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { resolveBoardOwnerUserId } from "@/lib/team-board";
+import { findUserIdByAssigneeName, getTeamProfilesForBoard } from "@/lib/team-members";
+import { sendExpoPushToUser } from "@/lib/push";
 import { NextResponse } from "next/server";
 
 const corsHeaders = {
@@ -35,6 +37,12 @@ export async function PATCH(
   const body = await request.json();
   const supabase = createAdminClient();
   const boardOwnerUserId = await resolveBoardOwnerUserId(authUser);
+  const { data: existingTask } = await supabase
+    .from("tasks")
+    .select("id, title, task_key, assignee")
+    .eq("id", id)
+    .eq("user_id", boardOwnerUserId)
+    .maybeSingle();
 
   const { data, error } = await supabase
     .from("tasks")
@@ -46,6 +54,34 @@ export async function PATCH(
 
   if (error) {
     return jsonWithCors({ error: error.message }, { status: 500 });
+  }
+
+  try {
+    const profiles = await getTeamProfilesForBoard(boardOwnerUserId, authUser.email);
+    const oldAssignee = String(existingTask?.assignee ?? "");
+    const newAssignee = String(data?.assignee ?? "");
+    const oldAssigneeUserId = oldAssignee
+      ? findUserIdByAssigneeName(oldAssignee, profiles)
+      : null;
+    const newAssigneeUserId = newAssignee
+      ? findUserIdByAssigneeName(newAssignee, profiles)
+      : null;
+
+    if (newAssigneeUserId && newAssigneeUserId !== oldAssigneeUserId) {
+      await sendExpoPushToUser(newAssigneeUserId, {
+        title: "Task Assigned to You",
+        body: `${data.task_key}: ${data.title}`,
+        data: { taskId: data.id, type: "task_assigned" },
+      });
+    } else if (newAssigneeUserId) {
+      await sendExpoPushToUser(newAssigneeUserId, {
+        title: "Task Updated",
+        body: `${data.task_key}: ${data.title}`,
+        data: { taskId: data.id, type: "task_updated" },
+      });
+    }
+  } catch {
+    // Non-blocking
   }
 
   return jsonWithCors(data);

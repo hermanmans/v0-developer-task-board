@@ -21,6 +21,7 @@ import type {
   TaskStatus,
   TaskPriority,
   TaskType,
+  TeamMember,
 } from "@/lib/types";
 import { STATUS_COLUMNS } from "@/lib/types";
 import { BoardHeader } from "./board-header";
@@ -60,6 +61,18 @@ export function KanbanBoard() {
     isLoading,
     mutate,
   } = useSWR<Task[]>("/api/tasks", fetcher, { fallbackData: [] });
+
+  const { data: teamMembers } = useSWR<TeamMember[]>(
+    "/api/team-members",
+    async (url: string) => {
+      const res = await authFetch(url);
+      if (!res.ok) throw new Error("Failed to fetch team members");
+      const json = await res.json();
+      if (json && Array.isArray(json.members)) return json.members as TeamMember[];
+      return [];
+    },
+    { fallbackData: [] }
+  );
 
   useEffect(() => {
     const handleTasksChanged = () => {
@@ -436,6 +449,7 @@ export function KanbanBoard() {
         onSubmit={editingTask ? handleUpdateTask : handleCreateTask}
         initialData={editingTask}
         defaultStatus={defaultStatus}
+        assigneeOptions={Array.from(new Set((teamMembers ?? []).map((m) => m.name).filter(Boolean)))}
       />
 
       <TaskDetailDialog

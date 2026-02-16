@@ -32,6 +32,7 @@ interface TaskDialogProps {
   }) => void;
   initialData?: Task | null;
   defaultStatus?: TaskStatus;
+  assigneeOptions?: string[];
 }
 
 export function TaskDialog({
@@ -40,6 +41,7 @@ export function TaskDialog({
   onSubmit,
   initialData,
   defaultStatus = "backlog",
+  assigneeOptions = [],
 }: TaskDialogProps) {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -100,6 +102,16 @@ export function TaskDialog({
     }
     setCustomLabel("");
   };
+
+  const resolvedAssigneeOptions = React.useMemo(() => {
+    const normalized = assigneeOptions
+      .map((value) => value.trim())
+      .filter(Boolean);
+    if (assignee.trim() && !normalized.includes(assignee.trim())) {
+      return [assignee.trim(), ...normalized];
+    }
+    return normalized;
+  }, [assigneeOptions, assignee]);
 
   if (!open) return null;
 
@@ -277,14 +289,19 @@ export function TaskDialog({
             >
               Assignee
             </label>
-            <input
+            <select
               id="task-assignee"
-              type="text"
               value={assignee}
               onChange={(e) => setAssignee(e.target.value)}
-              placeholder="e.g. john@example.com"
-              className="h-10 rounded-lg border border-input bg-background px-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-            />
+              className="h-10 rounded-lg border border-input bg-background px-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+            >
+              <option value="">Unassigned</option>
+              {resolvedAssigneeOptions.map((name) => (
+                <option key={name} value={name}>
+                  {name}
+                </option>
+              ))}
+            </select>
           </div>
 
           <div className="flex items-center justify-end gap-2 pt-2">

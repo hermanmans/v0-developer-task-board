@@ -1,6 +1,8 @@
 import { authenticateRequest } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { resolveBoardOwnerUserId } from "@/lib/team-board";
+import { findUserIdByAssigneeName, getTeamProfilesForBoard } from "@/lib/team-members";
+import { sendExpoPushToUser } from "@/lib/push";
 import { NextResponse } from "next/server";
 
 const corsHeaders = {
@@ -51,7 +53,30 @@ export async function GET(request: Request) {
       return { ...rest, comments_count: commentCount };
     }) ?? [];
 
-  return jsonWithCors(tasksWithCounts);
+  const taskIds = tasksWithCounts.map((task: any) => task.id);
+  const viewMap = new Map<string, string>();
+  if (taskIds.length > 0) {
+    const { data: views } = await supabase
+      .from("task_views")
+      .select("task_id, viewed_at")
+      .eq("user_id", authUser.userId)
+      .in("task_id", taskIds);
+    for (const row of views ?? []) {
+      if (row?.task_id && row?.viewed_at) {
+        viewMap.set(String(row.task_id), String(row.viewed_at));
+      }
+    }
+  }
+
+  const tasksWithUnread = tasksWithCounts.map((task: any) => {
+    const viewedAt = viewMap.get(task.id);
+    const updatedAt = task.updated_at ? Date.parse(String(task.updated_at)) : NaN;
+    const viewedTs = viewedAt ? Date.parse(viewedAt) : NaN;
+    const isUnread = !viewedAt || (Number.isFinite(updatedAt) && Number.isFinite(viewedTs) && updatedAt > viewedTs);
+    return { ...task, is_unread: Boolean(isUnread) };
+  });
+
+  return jsonWithCors(tasksWithUnread);
 }
 
 export async function POST(request: Request) {
@@ -105,6 +130,22 @@ export async function POST(request: Request) {
 
   if (error) {
     return jsonWithCors({ error: error.message }, { status: 500 });
+  }
+
+  if (data?.assignee) {
+    try {
+      const profiles = await getTeamProfilesForBoard(boardOwnerUserId, authUser.email);
+      const assigneeUserId = findUserIdByAssigneeName(String(data.assignee), profiles);
+      if (assigneeUserId) {
+        await sendExpoPushToUser(assigneeUserId, {
+          title: "New Task Assigned",
+          body: `${data.task_key}: ${data.title}`,
+          data: { taskId: data.id, type: "task_assigned" },
+        });
+      }
+    } catch {
+      // Non-blocking
+    }
   }
 
   return jsonWithCors(data, { status: 201 });

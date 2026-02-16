@@ -15,13 +15,14 @@ import {
 import { BlurView } from "expo-blur";
 import { useAuth } from "../context/auth-context";
 import { createGithubBranch, createGithubIssue } from "../services/github";
-import { getGithubProjects } from "../services/profile";
+import { getGithubProjects, getTeamMembers } from "../services/profile";
 import {
   createTask,
   createTaskComment,
   deleteTask,
   getTaskComments,
   getTasks,
+  markTaskViewed,
   updateTask,
   updateTaskStatus,
 } from "../services/tasks";
@@ -48,6 +49,13 @@ const TYPE_LABEL: Record<TaskType, string> = {
   improvement: "Improvement",
   task: "Task",
 };
+const STATUS_LABEL: Record<TaskStatus, string> = {
+  backlog: "Backlog",
+  todo: "To Do",
+  in_progress: "In Progress",
+  in_review: "In Review",
+  done: "Done",
+};
 const P_DOT: Record<TaskPriority, string> = {
   critical: "#ef4444",
   high: "#f97316",
@@ -58,12 +66,6 @@ const P_DOT: Record<TaskPriority, string> = {
 const STATUS_OPTIONS: TaskStatus[] = ["backlog", "todo", "in_progress", "in_review", "done"];
 const PRIORITY_OPTIONS: TaskPriority[] = ["critical", "high", "medium", "low"];
 const TYPE_OPTIONS: TaskType[] = ["bug", "feature", "improvement", "task"];
-
-function nextStatus(status: TaskStatus): TaskStatus {
-  const i = STATUS_OPTIONS.indexOf(status);
-  if (i < 0 || i === STATUS_OPTIONS.length - 1) return "done";
-  return STATUS_OPTIONS[i + 1];
-}
 
 function parseRepo(input: string) {
   const clean = input.trim().replace(/\.git$/, "");
@@ -84,6 +86,7 @@ export function BoardScreen() {
   const [typeFilter, setTypeFilter] = useState<TaskType | "all">("all");
 
   const [projects, setProjects] = useState<GithubProject[]>([]);
+  const [teamMemberNames, setTeamMemberNames] = useState<string[]>([]);
 
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [creatingTask, setCreatingTask] = useState(false);
@@ -91,6 +94,7 @@ export function BoardScreen() {
   const [comments, setComments] = useState<Comment[]>([]);
   const [commentDraft, setCommentDraft] = useState("");
   const [loadingComments, setLoadingComments] = useState(false);
+  const [movingTask, setMovingTask] = useState<Task | null>(null);
 
   const [showGithubForm, setShowGithubForm] = useState(false);
   const [selectedProjectId, setSelectedProjectId] = useState("");
@@ -120,7 +124,13 @@ export function BoardScreen() {
 
   useEffect(() => {
     if (!accessToken) return;
-    Promise.all([loadTasks(), getGithubProjects(accessToken).then(setProjects)])
+    Promise.all([
+      loadTasks(),
+      getGithubProjects(accessToken).then(setProjects),
+      getTeamMembers(accessToken).then((members) => {
+        setTeamMemberNames(Array.from(new Set(members.map((m) => m.name.trim()).filter(Boolean))));
+      }),
+    ])
       .catch((e: unknown) => setError(e instanceof Error ? e.message : "Failed to load"))
       .finally(() => setIsLoading(false));
   }, [accessToken, loadTasks]);
@@ -162,6 +172,20 @@ export function BoardScreen() {
     return out;
   }, [filtered]);
 
+  const unreadByStatus = useMemo(() => {
+    const out: Record<TaskStatus, number> = {
+      backlog: 0,
+      todo: 0,
+      in_progress: 0,
+      in_review: 0,
+      done: 0,
+    };
+    filtered.forEach((task) => {
+      if (task.is_unread) out[task.status] += 1;
+    });
+    return out;
+  }, [filtered]);
+
   const openCreate = () => {
     setForm({
       title: "",
@@ -177,6 +201,9 @@ export function BoardScreen() {
   };
 
   const openEdit = (task: Task) => {
+    // Ensure the view modal is closed before showing the edit modal.
+    setViewingTask(null);
+    setShowGithubForm(false);
     setForm({
       title: task.title,
       description: task.description || "",
@@ -235,6 +262,12 @@ export function BoardScreen() {
 
   const openView = async (task: Task) => {
     if (!accessToken) return;
+    try {
+      await markTaskViewed(accessToken, task.id);
+      setTasks((prev) => prev.map((t) => (t.id === task.id ? { ...t, is_unread: false } : t)));
+    } catch {
+      // non-blocking
+    }
     setViewingTask(task);
     setShowGithubForm(false);
     setGithubRepo(task.github_repo ?? "");
@@ -257,6 +290,26 @@ export function BoardScreen() {
     setCommentDraft("");
     setComments(await getTaskComments(accessToken, viewingTask.id));
     await loadTasks();
+  };
+
+  const assigneeOptions = useMemo(() => {
+    if (!form.assignee.trim()) return teamMemberNames;
+    if (teamMemberNames.includes(form.assignee.trim())) return teamMemberNames;
+    return [form.assignee.trim(), ...teamMemberNames];
+  }, [form.assignee, teamMemberNames]);
+
+  const moveTask = async (task: Task, status: TaskStatus) => {
+    if (!accessToken || task.status === status) return;
+    try {
+      await updateTaskStatus(accessToken, task.id, status);
+      setMovingTask(null);
+      await loadTasks();
+      showToast(`Moved to ${STATUS_LABEL[status]}`);
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : "Failed to move task";
+      setError(msg);
+      showToast(msg);
+    }
   };
 
   const doGithub = async () => {
@@ -341,7 +394,13 @@ export function BoardScreen() {
               <View key={col.id} style={s.column}>
                 <Pressable style={s.colHead} onPress={() => setExpanded((prev) => (prev === col.id ? null : col.id))}>
                   <Text style={s.colTitle}>{col.label}</Text>
-                  <Text style={s.count}>{grouped[col.id].length} {open ? "-" : "+"}</Text>
+                  <Text style={s.count}>
+                    {grouped[col.id].length}
+                    {unreadByStatus[col.id] > 0 ? (
+                      <Text style={s.countUnread}>({unreadByStatus[col.id]})</Text>
+                    ) : null}
+                    {open ? " ▲" : " ▼"}
+                  </Text>
                 </Pressable>
                 {open ? (
                   grouped[col.id].length ? (
@@ -353,18 +412,13 @@ export function BoardScreen() {
                           {task.description ? <Text style={s.desc} numberOfLines={2}>{task.description}</Text> : null}
                         </Pressable>
                         <View style={s.rowWrap} pointerEvents="box-none">
-                          {task.status !== "done" ? (
-                            <Pressable
-                              style={s.smallBtn}
-                              hitSlop={6}
-                              onPress={async () => {
-                                await updateTaskStatus(accessToken!, task.id, nextStatus(task.status));
-                                await loadTasks();
-                              }}
-                            >
-                              <Text style={s.smallTxt}>Move</Text>
-                            </Pressable>
-                          ) : null}
+                          <Pressable
+                            style={s.smallBtn}
+                            hitSlop={6}
+                            onPress={() => setMovingTask(task)}
+                          >
+                            <Text style={s.smallTxt}>Move</Text>
+                          </Pressable>
                           <Pressable
                             style={s.smallBtn}
                             hitSlop={6}
@@ -396,7 +450,25 @@ export function BoardScreen() {
         <View style={s.overlay}><View style={s.modal}><Text style={s.modalTitle}>{editingTask ? "Edit Task" : "New Task"}</Text>
           <TextInput style={s.input} placeholder="Title" placeholderTextColor="#64748b" value={form.title} onChangeText={(v) => setForm((p) => ({ ...p, title: v }))} />
           <TextInput style={[s.input, s.area]} placeholder="Description" placeholderTextColor="#64748b" multiline value={form.description} onChangeText={(v) => setForm((p) => ({ ...p, description: v }))} />
-          <TextInput style={s.input} placeholder="Assignee" placeholderTextColor="#64748b" value={form.assignee} onChangeText={(v) => setForm((p) => ({ ...p, assignee: v }))} />
+          <Pressable
+            style={s.chip}
+            onPress={() =>
+              setForm((p) => {
+                const options = ["", ...assigneeOptions];
+                const current = p.assignee.trim();
+                const index = options.indexOf(current);
+                const next = options[(index + 1 + options.length) % options.length];
+                return { ...p, assignee: next };
+              })
+            }
+          >
+            <Text style={s.chipText}>Assignee: {form.assignee || "Unassigned"}</Text>
+          </Pressable>
+          {assigneeOptions.length ? (
+            <Text style={s.sub}>Team: {assigneeOptions.join(", ")}</Text>
+          ) : (
+            <Text style={s.sub}>No team profiles found yet. Add names in Profile Settings.</Text>
+          )}
           <TextInput style={s.input} placeholder="Labels (comma separated)" placeholderTextColor="#64748b" value={form.labels} onChangeText={(v) => setForm((p) => ({ ...p, labels: v }))} />
           <View style={s.rowWrap}>
             <Pressable style={s.chip} onPress={() => setForm((p) => ({ ...p, status: STATUS_OPTIONS[(STATUS_OPTIONS.indexOf(p.status) + 1) % STATUS_OPTIONS.length] }))}><Text style={s.chipText}>Status: {form.status}</Text></Pressable>
@@ -447,6 +519,32 @@ export function BoardScreen() {
           <TextInput style={[s.input, s.area]} placeholder="Write a comment..." placeholderTextColor="#64748b" multiline value={commentDraft} onChangeText={setCommentDraft} />
           <Pressable style={s.primary} onPress={postComment}><Text style={s.primaryText}>Post Comment</Text></Pressable>
         </View>
+        </View>
+      </Modal>
+
+      <Modal visible={Boolean(movingTask)} animationType="fade" transparent>
+        <View style={s.overlay}>
+          <BlurView style={s.blur} intensity={80} tint="dark" />
+          <View style={s.modal}>
+            <Text style={s.modalTitle}>Move task</Text>
+            <Text style={s.desc}>{movingTask?.title}</Text>
+            <View style={s.stack}>
+              {STATUS_OPTIONS.filter((status) => status !== movingTask?.status).map((status) => (
+                <Pressable
+                  key={status}
+                  style={s.smallBtn}
+                  onPress={() => movingTask && moveTask(movingTask, status)}
+                >
+                  <Text style={s.smallTxt}>{STATUS_LABEL[status]}</Text>
+                </Pressable>
+              ))}
+            </View>
+            <View style={s.rowEnd}>
+              <Pressable style={s.ghost} onPress={() => setMovingTask(null)}>
+                <Text style={s.ghostText}>Cancel</Text>
+              </Pressable>
+            </View>
+          </View>
         </View>
       </Modal>
 
@@ -505,6 +603,7 @@ const s = StyleSheet.create({
   colHead: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
   colTitle: { color: "#e2e8f0", fontSize: 13, fontWeight: "700" },
   count: { color: "#94a3b8", fontSize: 12, fontWeight: "700" },
+  countUnread: { color: "#22c55e" },
   empty: { color: "#94a3b8", fontSize: 12, textAlign: "center", paddingVertical: 8 },
   task: { borderWidth: 1, borderColor: "#334155", borderLeftWidth: 4, borderRadius: 10, backgroundColor: "#111827", padding: 10, gap: 6 },
   key: { color: "#94a3b8", fontSize: 11, fontWeight: "600" },

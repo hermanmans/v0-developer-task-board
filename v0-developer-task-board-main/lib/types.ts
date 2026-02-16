@@ -19,6 +19,7 @@ export interface Task {
   labels: string[];
   assignee: string;
   comments_count?: number;
+  is_unread?: boolean;
   task_key: string;
   user_id: string;
   report_id: string | null;
@@ -38,6 +39,12 @@ export interface Comment {
   content: string;
   created_at: string;
   updated_at: string;
+}
+
+export interface TeamMember {
+  user_id: string | null;
+  email: string;
+  name: string;
 }
 
 export type ReportStatus = "open" | "reviewing" | "promoted" | "dismissed";

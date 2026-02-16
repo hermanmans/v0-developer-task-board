@@ -21,6 +21,8 @@ export default function SignUpPage() {
   const [contactNumber, setContactNumber] = useState("");
   const [disclaimerAccepted, setDisclaimerAccepted] = useState(false);
   const [popiaAccepted, setPopiaAccepted] = useState(false);
+  const [privacyPolicyAccepted, setPrivacyPolicyAccepted] = useState(false);
+  const [accountDeletionAccepted, setAccountDeletionAccepted] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
@@ -36,8 +38,15 @@ export default function SignUpPage() {
       setIsLoading(false);
       return;
     }
-    if (!disclaimerAccepted || !popiaAccepted) {
-      setError("Please accept the Disclaimer and POPIA consent.");
+    if (
+      !disclaimerAccepted ||
+      !popiaAccepted ||
+      !privacyPolicyAccepted ||
+      !accountDeletionAccepted
+    ) {
+      setError(
+        "Please accept Disclaimer, Privacy Policy, Account Deletion method, and POPIA consent."
+      );
       setIsLoading(false);
       return;
     }
@@ -54,32 +63,40 @@ export default function SignUpPage() {
           emailRedirectTo:
             process.env.NEXT_PUBLIC_DEV_SUPABASE_REDIRECT_URL ||
             `${window.location.origin}/auth/callback`,
+          data: {
+            disclaimer_accepted: disclaimerAccepted,
+            privacy_policy_accepted: privacyPolicyAccepted,
+            account_deletion_accepted: accountDeletionAccepted,
+            popia_accepted: popiaAccepted,
+          },
         },
       });
       if (error) throw error;
 
-      try {
-        if (data?.user?.id && data?.user?.email) {
-          await fetch("/api/profile/bootstrap", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              userId: data.user.id,
-              email: data.user.email,
-              firstName,
-              lastName: surname,
-              company,
-              companyLogoUrl,
-              inviteEmails: inviteList,
-              contactNumber,
-              disclaimerAccepted,
-              popiaAccepted,
-              githubToken,
-            }),
-          });
+      if (data?.user?.id && data?.user?.email) {
+        const bootstrapRes = await fetch("/api/profile/bootstrap", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            userId: data.user.id,
+            email: data.user.email,
+            firstName,
+            lastName: surname,
+            company,
+            companyLogoUrl,
+            inviteEmails: inviteList,
+            contactNumber,
+            disclaimerAccepted,
+            privacyPolicyAccepted,
+            accountDeletionAccepted,
+            popiaAccepted,
+            githubToken,
+          }),
+        });
+        if (!bootstrapRes.ok) {
+          const text = await bootstrapRes.text();
+          throw new Error(text || "Failed to save profile consent.");
         }
-      } catch {
-        // Profile bootstrap is best-effort; account creation still succeeds.
       }
       router.push("/auth/sign-up-success");
     } catch (error: unknown) {
@@ -304,7 +321,41 @@ export default function SignUpPage() {
                   required
                 />
                 <span>
-                  I acknowledge the Disclaimer and accept the terms.
+                  I acknowledge the{" "}
+                  <Link href="/disclaimer" className="text-primary underline">
+                    Disclaimer
+                  </Link>{" "}
+                  and accept the terms.
+                </span>
+              </label>
+              <label className="flex items-start gap-2 text-sm text-foreground">
+                <input
+                  type="checkbox"
+                  checked={privacyPolicyAccepted}
+                  onChange={(e) => setPrivacyPolicyAccepted(e.target.checked)}
+                  className="mt-0.5"
+                  required
+                />
+                <span>
+                  I have read and accept the{" "}
+                  <Link href="/privacy-policy" className="text-primary underline">
+                    Privacy Policy
+                  </Link>.
+                </span>
+              </label>
+              <label className="flex items-start gap-2 text-sm text-foreground">
+                <input
+                  type="checkbox"
+                  checked={accountDeletionAccepted}
+                  onChange={(e) => setAccountDeletionAccepted(e.target.checked)}
+                  className="mt-0.5"
+                  required
+                />
+                <span>
+                  I understand the{" "}
+                  <Link href="/account-deletion" className="text-primary underline">
+                    Account Deletion method
+                  </Link>.
                 </span>
               </label>
               <label className="flex items-start gap-2 text-sm text-foreground">
@@ -316,7 +367,11 @@ export default function SignUpPage() {
                   required
                 />
                 <span>
-                  I consent to the POPIA Act requirements for data processing.
+                  I consent to the{" "}
+                  <Link href="/popia" className="text-primary underline">
+                    POPIA Notice
+                  </Link>{" "}
+                  requirements for data processing.
                 </span>
               </label>
             </div>

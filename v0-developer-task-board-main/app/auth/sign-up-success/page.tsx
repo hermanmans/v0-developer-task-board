@@ -28,6 +28,23 @@ export default function SignUpSuccessPage() {
           >
             Back to Sign in
           </Link>
+          <p className="mt-4 text-xs text-muted-foreground">
+            <Link href="/privacy-policy" className="text-primary underline">
+              Privacy Policy
+            </Link>{" "}
+            {" | "}
+            <Link href="/popia" className="text-primary underline">
+              POPIA
+            </Link>{" "}
+            {" | "}
+            <Link href="/disclaimer" className="text-primary underline">
+              Disclaimer
+            </Link>{" "}
+            {" | "}
+            <Link href="/account-deletion" className="text-primary underline">
+              Account Deletion
+            </Link>
+          </p>
         </div>
       </div>
     </div>

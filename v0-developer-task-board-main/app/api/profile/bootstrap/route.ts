@@ -29,6 +29,8 @@ export async function POST(request: Request) {
       inviteEmails,
       contactNumber,
       disclaimerAccepted,
+      privacyPolicyAccepted,
+      accountDeletionAccepted,
       popiaAccepted,
       githubToken,
     } = body ?? {};
@@ -50,6 +52,21 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Email mismatch" }, { status: 400 });
     }
 
+    if (
+      !Boolean(disclaimerAccepted) ||
+      !Boolean(privacyPolicyAccepted) ||
+      !Boolean(accountDeletionAccepted) ||
+      !Boolean(popiaAccepted)
+    ) {
+      return NextResponse.json(
+        {
+          error:
+            "Disclaimer, Privacy Policy, Account Deletion method, and POPIA consent are required.",
+        },
+        { status: 400 }
+      );
+    }
+
     const githubTokenEnc =
       typeof githubToken === "string" && githubToken.trim().length > 0
         ? encryptSecret(githubToken.trim())
@@ -67,7 +84,11 @@ export async function POST(request: Request) {
         invite_emails: normalizeInviteEmails(inviteEmails),
         contact_number:
           typeof contactNumber === "string" ? contactNumber.trim() : null,
-        disclaimer_accepted: Boolean(disclaimerAccepted),
+        // `disclaimer_accepted` now reflects full legal-policy acceptance.
+        disclaimer_accepted:
+          Boolean(disclaimerAccepted) &&
+          Boolean(privacyPolicyAccepted) &&
+          Boolean(accountDeletionAccepted),
         popia_accepted: Boolean(popiaAccepted),
         github_token_enc: githubTokenEnc,
         updated_at: new Date().toISOString(),

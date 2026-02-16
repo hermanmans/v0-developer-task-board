@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
+  Linking,
   Modal,
   Pressable,
   RefreshControl,
@@ -12,9 +13,12 @@ import {
   View,
 } from "react-native";
 import { BlurView } from "expo-blur";
+import { useAuth } from "../context/auth-context";
+import { getApiBaseUrl } from "../lib/supabase";
 import type { GithubProject, Profile } from "../lib/types";
 import {
   addGithubProject,
+  deleteMyAccount,
   getGithubProjects,
   getProfile,
   removeGithubProject,
@@ -28,6 +32,7 @@ type ProfileScreenProps = {
 };
 
 export function ProfileScreen({ accessToken, email }: ProfileScreenProps) {
+  const { signOut } = useAuth();
   const [profile, setProfile] = useState<Profile | null>(null);
   const [projects, setProjects] = useState<GithubProject[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -49,7 +54,13 @@ export function ProfileScreen({ accessToken, email }: ProfileScreenProps) {
   const [projectRepo, setProjectRepo] = useState("");
   const [projectLabel, setProjectLabel] = useState("");
   const [confirmProject, setConfirmProject] = useState<GithubProject | null>(null);
+  const [deleteConfirmText, setDeleteConfirmText] = useState("");
+  const [isDeletingAccount, setIsDeletingAccount] = useState(false);
   const { toastMsg, showToast, hideToast } = useToast();
+  const privacyPolicyUrl = `${getApiBaseUrl()}/privacy-policy`;
+  const popiaUrl = `${getApiBaseUrl()}/popia`;
+  const disclaimerUrl = `${getApiBaseUrl()}/disclaimer`;
+  const accountDeletionUrl = `${getApiBaseUrl()}/account-deletion`;
 
   const loadData = useCallback(async () => {
     setError(null);
@@ -160,6 +171,27 @@ export function ProfileScreen({ accessToken, email }: ProfileScreenProps) {
 
   const onRemoveProject = (project: GithubProject) => {
     setConfirmProject(project);
+  };
+
+  const onDeleteAccount = async () => {
+    if (deleteConfirmText.trim() !== "DELETE") {
+      showToast('Type "DELETE" to confirm account deletion.');
+      return;
+    }
+    setIsDeletingAccount(true);
+    setError(null);
+    try {
+      await deleteMyAccount(accessToken, deleteConfirmText.trim());
+      showToast("Account deleted");
+      await signOut();
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Failed to delete account";
+      setError(msg);
+      showToast(msg);
+    } finally {
+      setIsDeletingAccount(false);
+      setDeleteConfirmText("");
+    }
   };
 
   if (isLoading) {
@@ -311,6 +343,43 @@ export function ProfileScreen({ accessToken, email }: ProfileScreenProps) {
             onValueChange={(value) => setForm((prev) => ({ ...prev, popia_accepted: value }))}
           />
         </View>
+        <View style={styles.legalLinks}>
+          <Pressable onPress={() => Linking.openURL(privacyPolicyUrl)}>
+            <Text style={styles.linkText}>Privacy Policy</Text>
+          </Pressable>
+          <Pressable onPress={() => Linking.openURL(popiaUrl)}>
+            <Text style={styles.linkText}>POPIA Notice</Text>
+          </Pressable>
+          <Pressable onPress={() => Linking.openURL(disclaimerUrl)}>
+            <Text style={styles.linkText}>Disclaimer</Text>
+          </Pressable>
+          <Pressable onPress={() => Linking.openURL(accountDeletionUrl)}>
+            <Text style={styles.linkText}>Account Deletion Method</Text>
+          </Pressable>
+        </View>
+      </View>
+
+      <View style={styles.card}>
+        <Text style={styles.sectionTitle}>Danger Zone</Text>
+        <Text style={styles.subtitle}>
+          Delete your account and associated data. This cannot be undone.
+        </Text>
+        <TextInput
+          style={styles.input}
+          placeholder='Type "DELETE" to confirm'
+          placeholderTextColor="#64748b"
+          value={deleteConfirmText}
+          onChangeText={setDeleteConfirmText}
+        />
+        <Pressable
+          style={[styles.saveButton, styles.deleteButton, isDeletingAccount && styles.saveButtonDisabled]}
+          disabled={isDeletingAccount}
+          onPress={onDeleteAccount}
+        >
+          <Text style={styles.saveButtonText}>
+            {isDeletingAccount ? "Deleting..." : "Delete Account"}
+          </Text>
+        </Pressable>
       </View>
 
       <Pressable
@@ -503,6 +572,19 @@ const styles = StyleSheet.create({
   saveButtonText: {
     color: "#ffffff",
     fontSize: 14,
+    fontWeight: "700",
+  },
+  deleteButton: {
+    backgroundColor: "#dc2626",
+    marginTop: 0,
+  },
+  legalLinks: {
+    marginTop: 8,
+    gap: 8,
+  },
+  linkText: {
+    color: "#93c5fd",
+    fontSize: 12,
     fontWeight: "700",
   },
   overlay: {

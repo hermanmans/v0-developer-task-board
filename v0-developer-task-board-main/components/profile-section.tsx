@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import useSWR from "swr";
 import { useAuth } from "@/lib/auth-provider";
 import { toast } from "sonner";
+import Link from "next/link";
 import { Save, ShieldCheck, Users, Building2, KeyRound, Trash2, Plus } from "lucide-react";
 
 type ProfileResponse = {
@@ -30,6 +31,8 @@ export function ProfileSection() {
   const [projectOwner, setProjectOwner] = useState("");
   const [projectRepo, setProjectRepo] = useState("");
   const [projectLabel, setProjectLabel] = useState("");
+  const [deleteConfirmText, setDeleteConfirmText] = useState("");
+  const [isDeletingAccount, setIsDeletingAccount] = useState(false);
   const [form, setForm] = useState({
     first_name: "",
     last_name: "",
@@ -167,6 +170,29 @@ export function ProfileSection() {
       toast.success("Project removed");
     } catch {
       toast.error("Failed to remove project");
+    }
+  };
+
+  const handleDeleteAccount = async () => {
+    if (deleteConfirmText.trim() !== "DELETE") {
+      toast.error('Type "DELETE" to confirm account deletion.');
+      return;
+    }
+
+    setIsDeletingAccount(true);
+    try {
+      const res = await authFetch("/api/account", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ confirmText: deleteConfirmText.trim() }),
+      });
+      if (!res.ok) throw new Error("Failed to delete account");
+      toast.success("Account deleted");
+      window.location.href = "/auth/login";
+    } catch {
+      toast.error("Failed to delete account");
+    } finally {
+      setIsDeletingAccount(false);
     }
   };
 
@@ -406,6 +432,25 @@ export function ProfileSection() {
           Compliance
         </div>
         <div className="flex flex-col gap-3">
+          <div className="rounded-lg border border-border bg-muted/20 p-3 text-xs text-muted-foreground">
+            Review legal documents:{" "}
+            <Link href="/privacy-policy" className="text-primary underline">
+              Privacy Policy
+            </Link>
+            ,{" "}
+            <Link href="/popia" className="text-primary underline">
+              POPIA Notice
+            </Link>
+            ,{" "}
+            <Link href="/disclaimer" className="text-primary underline">
+              Disclaimer
+            </Link>
+            , and{" "}
+            <Link href="/account-deletion" className="text-primary underline">
+              Account Deletion Method
+            </Link>
+            .
+          </div>
           <label className="flex items-start gap-2 text-sm text-foreground">
             <input
               type="checkbox"
@@ -436,6 +481,31 @@ export function ProfileSection() {
               I consent to the POPIA Act requirements for data processing.
             </span>
           </label>
+        </div>
+      </div>
+
+      <div className="rounded-xl border border-destructive/40 bg-card p-5">
+        <div className="mb-4 flex items-center gap-2 text-sm font-semibold text-foreground">
+          <Trash2 className="h-4 w-4 text-destructive" />
+          Danger Zone
+        </div>
+        <p className="text-sm text-muted-foreground">
+          Delete your account and associated data. This action cannot be undone.
+        </p>
+        <div className="mt-3 flex flex-col gap-2 md:max-w-sm">
+          <input
+            value={deleteConfirmText}
+            onChange={(e) => setDeleteConfirmText(e.target.value)}
+            placeholder='Type "DELETE" to confirm'
+            className="h-10 rounded-lg border border-input bg-background px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+          />
+          <button
+            onClick={handleDeleteAccount}
+            disabled={isDeletingAccount}
+            className="inline-flex h-10 items-center justify-center rounded-lg bg-destructive px-4 text-sm font-medium text-destructive-foreground transition-colors hover:bg-destructive/90 disabled:opacity-50"
+          >
+            {isDeletingAccount ? "Deleting..." : "Delete Account"}
+          </button>
         </div>
       </div>
     </div>

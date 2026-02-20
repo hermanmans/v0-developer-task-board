@@ -11,7 +11,7 @@ const _jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "BugBoard - Developer Task Tracker",
+  title: "Task Bored",
   description:
     "A clean, modern bug board and task tracker for developers. Track bugs, features, and improvements with a Kanban-style interface.",
 };

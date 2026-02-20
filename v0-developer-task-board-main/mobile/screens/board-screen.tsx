@@ -36,6 +36,7 @@ import type {
 } from "../lib/types";
 import { STATUS_COLUMNS } from "../lib/types";
 import { Toast, useToast } from "../lib/use-toast";
+import { ChevronsDown,ChevronsUp } from "lucide-react";
 
 const PRIORITY_LABEL: Record<TaskPriority, string> = {
   critical: "Critical",
@@ -394,13 +395,15 @@ export function BoardScreen() {
               <View key={col.id} style={s.column}>
                 <Pressable style={s.colHead} onPress={() => setExpanded((prev) => (prev === col.id ? null : col.id))}>
                   <Text style={s.colTitle}>{col.label}</Text>
-                  <Text style={s.count}>
-                    {grouped[col.id].length}
-                    {unreadByStatus[col.id] > 0 ? (
-                      <Text style={s.countUnread}>({unreadByStatus[col.id]})</Text>
-                    ) : null}
-                    {open ? " ▲" : " ▼"}
-                  </Text>
+                  <View style={s.colHeadRight}>
+                    <Text style={s.count}>
+                      {grouped[col.id].length}
+                      {unreadByStatus[col.id] > 0 ? (
+                        <Text style={[s.countUnread, {paddingLeft: 4}]}>({unreadByStatus[col.id]})</Text>
+                      ) : null}
+                    </Text>
+                    {open ? <ChevronsUp size={16} color="#64748b" /> : <ChevronsDown size={16} color="#64748b" />}
+                  </View>
                 </Pressable>
                 {open ? (
                   grouped[col.id].length ? (
@@ -601,6 +604,7 @@ const s = StyleSheet.create({
   stack: { flexDirection: "column", gap: 10 },
   column: { borderWidth: 1, borderColor: "#334155", borderRadius: 12, backgroundColor: "#111827", padding: 8, gap: 8 },
   colHead: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
+  colHeadRight: { flexDirection: "row", alignItems: "center", gap: 6 },
   colTitle: { color: "#e2e8f0", fontSize: 13, fontWeight: "700" },
   count: { color: "#94a3b8", fontSize: 12, fontWeight: "700" },
   countUnread: { color: "#22c55e" },

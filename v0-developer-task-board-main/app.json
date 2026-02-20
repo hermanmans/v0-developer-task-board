@@ -9,6 +9,12 @@
     "slug": "task-bored",
     "android": {
       "package": "com.idlehands.taskbored"
+    },
+    "ios": {
+      "bundleIdentifier": "com.idlehands.taskbored",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     }
   }
 }

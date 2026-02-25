@@ -5,6 +5,8 @@ import { apiFetch } from "./api";
 
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
+    // Keep deprecated key for broader runtime compatibility.
+    shouldShowAlert: true,
     shouldShowBanner: true,
     shouldShowList: true,
     shouldPlaySound: true,
@@ -13,30 +15,39 @@ Notifications.setNotificationHandler({
 });
 
 export async function registerDevicePushToken(accessToken: string) {
-  if (Platform.OS === "android") {
-    await Notifications.setNotificationChannelAsync("default", {
-      name: "default",
-      importance: Notifications.AndroidImportance.DEFAULT,
+  try {
+    if (Platform.OS === "android") {
+      await Notifications.setNotificationChannelAsync("default", {
+        name: "default",
+        importance: Notifications.AndroidImportance.DEFAULT,
+      });
+    }
+
+    const permissions = await Notifications.getPermissionsAsync();
+    let status = permissions.status;
+    if (status !== "granted") {
+      const requested = await Notifications.requestPermissionsAsync();
+      status = requested.status;
+    }
+    if (status !== "granted") return;
+
+    const projectId =
+      Constants.expoConfig?.extra?.eas?.projectId ??
+      Constants.easConfig?.projectId ??
+      undefined;
+    if (!projectId) {
+      console.warn("Push token registration skipped: missing EAS projectId.");
+      return;
+    }
+
+    const token = (await Notifications.getExpoPushTokenAsync({ projectId })).data;
+    if (!token) return;
+
+    await apiFetch("/api/push-tokens", accessToken, {
+      method: "POST",
+      body: JSON.stringify({ token, platform: Platform.OS }),
     });
+  } catch (error) {
+    console.warn("Push token registration failed:", error);
   }
-
-  const permissions = await Notifications.getPermissionsAsync();
-  let status = permissions.status;
-  if (status !== "granted") {
-    const requested = await Notifications.requestPermissionsAsync();
-    status = requested.status;
-  }
-  if (status !== "granted") return;
-
-  const projectId =
-    Constants.expoConfig?.extra?.eas?.projectId ??
-    Constants.easConfig?.projectId ??
-    undefined;
-  const token = (await Notifications.getExpoPushTokenAsync({ projectId })).data;
-  if (!token) return;
-
-  await apiFetch("/api/push-tokens", accessToken, {
-    method: "POST",
-    body: JSON.stringify({ token, platform: Platform.OS }),
-  });
 }

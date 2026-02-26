@@ -9,8 +9,13 @@ Mobile app notes
 - iOS simulator (Next running locally): http://localhost:3000
 - Android emulator (Next running locally): http://10.0.2.2:3000
 - Physical device: http://<your-lan-ip>:3000
+- Hosted backend: https://v0-developer-task-board.vercel.app
 
 3. Run commands:
 - npm install
 - npm run dev (web backend)
 - npm run mobile:start (Expo)
+
+4. Notes:
+- Mobile API requests target `<API_BASE_URL>/api/*` (not `/auth/login`).
+- If `EXPO_PUBLIC_API_BASE_URL` includes a path such as `/auth/login`, the app normalizes it to the site origin.

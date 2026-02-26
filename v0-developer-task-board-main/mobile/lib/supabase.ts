@@ -22,10 +22,22 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   },
 });
 
+const DEFAULT_WEB_BASE_URL = "https://v0-developer-task-board.vercel.app/auth/login";
+
+function normalizeApiBaseUrl(value: string) {
+  const trimmed = value.trim().replace(/\/+$/, "");
+  try {
+    const url = new URL(trimmed);
+    return `${url.protocol}//${url.host}`;
+  } catch {
+    return trimmed;
+  }
+}
+
 export function getApiBaseUrl() {
   const explicit = process.env.EXPO_PUBLIC_API_BASE_URL;
-  if (!explicit) {
-    return "http://localhost:3000";
+  if (explicit) {
+    return normalizeApiBaseUrl(explicit);
   }
-  return explicit.replace(/\/+$/, "");
+  return normalizeApiBaseUrl(DEFAULT_WEB_BASE_URL);
 }

@@ -392,7 +392,7 @@ export function BoardScreen() {
           {STATUS_COLUMNS.map((col) => {
             const open = expanded === col.id;
             return (
-              <View key={col.id} style={s.column}>
+              <View key={col.id} style={[s.column, {boxShadow: open ? "2px 2px 5px rgba(62, 106, 163, 0.58)" : "none"}]}>
                 <Pressable style={s.colHead} onPress={() => setExpanded((prev) => (prev === col.id ? null : col.id))}>
                   <Text style={s.colTitle}>{col.label}</Text>
                   <View style={s.colHeadRight}>
@@ -409,6 +409,7 @@ export function BoardScreen() {
                   grouped[col.id].length ? (
                     grouped[col.id].map((task) => (
                       <View key={task.id} style={[s.task, { borderLeftColor: P_DOT[task.priority] }]}>
+                        {task.is_unread ? <Text style={s.unreadMark}>*</Text> : null}
                         <Pressable onPress={() => openView(task)} hitSlop={6}>
                           <Text style={s.key}>{task.task_key}  {TYPE_LABEL[task.type]}</Text>
                           <Text style={s.taskTitle}>{task.title}</Text>
@@ -605,13 +606,14 @@ const s = StyleSheet.create({
   column: { borderWidth: 1, borderColor: "#334155", borderRadius: 12, backgroundColor: "#111827", padding: 8, gap: 8 },
   colHead: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
   colHeadRight: { flexDirection: "row", alignItems: "center", gap: 6 },
-  colTitle: { color: "#e2e8f0", fontSize: 13, fontWeight: "700" },
+  colTitle: { color: "#e2e8f0", fontSize: 13, fontWeight: "600" },
   count: { color: "#94a3b8", fontSize: 12, fontWeight: "700" },
-  countUnread: { color: "#22c55e" },
+  countUnread: { color: "#0e923f" },
   empty: { color: "#94a3b8", fontSize: 12, textAlign: "center", paddingVertical: 8 },
-  task: { borderWidth: 1, borderColor: "#334155", borderLeftWidth: 4, borderRadius: 10, backgroundColor: "#111827", padding: 10, gap: 6 },
+  task: { position: "relative", borderWidth: 1, borderColor: "#334155", borderLeftWidth: 4, borderRadius: 10, backgroundColor: "#111827", padding: 10, gap: 6 },
+  unreadMark: { position: "absolute", top: 5, right: 8, color: "#0e923f", fontSize: 14, fontWeight: "800" },
   key: { color: "#94a3b8", fontSize: 11, fontWeight: "600" },
-  taskTitle: { color: "#e2e8f0", fontSize: 14, fontWeight: "700" },
+  taskTitle: { color: "#e2e8f0", fontSize: 12, fontWeight: "700" },
   desc: { color: "#cbd5e1", fontSize: 12, lineHeight: 18 },
   smallBtn: { borderWidth: 1, borderColor: "#475569", borderRadius: 8, backgroundColor: "#111827", paddingHorizontal: 9, paddingVertical: 7 },
   smallTxt: { color: "#cbd5e1", fontSize: 11, fontWeight: "600" },

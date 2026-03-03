@@ -8,16 +8,18 @@ import {
   Text,
   View,
 } from "react-native";
+import { LinearGradient } from "expo-linear-gradient";
 import { AuthProvider, useAuth } from "./mobile/context/auth-context";
 import { LoginScreen } from "./mobile/screens/login-screen";
 import { BoardScreen } from "./mobile/screens/board-screen";
 import { SignupScreen } from "./mobile/screens/signup-screen";
 import { ReportsScreen } from "./mobile/screens/reports-screen";
 import { ProfileScreen } from "./mobile/screens/profile-screen";
+import { InfoPackScreen } from "./mobile/screens/info-pack-screen";
 import { registerDevicePushToken } from "./mobile/services/notifications";
 
 type AuthMode = "login" | "signup";
-type AppTab = "board" | "reports" | "profile";
+type AppTab = "board" | "reports" | "profile" | "info";
 
 function AppContent() {
   const { user, accessToken, isLoading } = useAuth();
@@ -56,7 +58,12 @@ function AppContent() {
 
   return (
     <SafeAreaView style={styles.authedShell}>
-      <View style={styles.tabBar}>
+      <LinearGradient
+        colors={["#020617", "#172554", "#083344"]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={styles.tabBar}
+      >
         <Pressable
           style={[styles.tabButton, activeTab === "board" && styles.activeTabButton]}
           onPress={() => setActiveTab("board")}
@@ -81,7 +88,15 @@ function AppContent() {
             Profile
           </Text>
         </Pressable>
-      </View>
+        <Pressable
+          style={[styles.tabButton, activeTab === "info" && styles.activeTabButton]}
+          onPress={() => setActiveTab("info")}
+        >
+          <Text style={[styles.tabText, activeTab === "info" && styles.activeTabText]}>
+            Info
+          </Text>
+        </Pressable>
+      </LinearGradient>
 
       <View style={styles.authedContent}>
         {activeTab === "board" && <BoardScreen />}
@@ -89,6 +104,7 @@ function AppContent() {
         {activeTab === "profile" && (
           <ProfileScreen accessToken={accessToken} email={user.email ?? null} />
         )}
+        {activeTab === "info" && <InfoPackScreen />}
       </View>
     </SafeAreaView>
   );
@@ -118,30 +134,29 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 6,
     borderBottomWidth: 1,
-    borderBottomColor: "#e2e8f0",
-    backgroundColor: "#ffffff",
+    borderBottomColor: "#1e293b",
     paddingHorizontal: 10,
     paddingVertical: 8,
   },
   tabButton: {
     borderWidth: 1,
-    borderColor: "#e2e8f0",
-    backgroundColor: "#ffffff",
+    borderColor: "#334155",
+    backgroundColor: "rgba(15,23,42,0.75)",
     borderRadius: 8,
     paddingHorizontal: 12,
     paddingVertical: 8,
   },
   activeTabButton: {
-    borderColor: "#bfdbfe",
-    backgroundColor: "#dbeafe",
+    borderColor: "#7dd3fc",
+    backgroundColor: "rgba(8,47,73,0.8)",
   },
   tabText: {
-    color: "#475569",
+    color: "#cbd5e1",
     fontSize: 12,
     fontWeight: "600",
   },
   activeTabText: {
-    color: "#1d4ed8",
+    color: "#67e8f9",
   },
   authedContent: {
     flex: 1,

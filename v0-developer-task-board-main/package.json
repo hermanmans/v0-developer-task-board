@@ -70,6 +70,7 @@
     "expo": "^54.0.33",
     "expo-blur": "~15.0.8",
     "expo-constants": "~18.0.13",
+    "expo-linear-gradient": "^55.0.8",
     "expo-notifications": "~0.32.16",
     "input-otp": "1.4.1",
     "jose": "^5.9.6",

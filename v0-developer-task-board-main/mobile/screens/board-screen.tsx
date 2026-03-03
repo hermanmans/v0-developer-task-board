@@ -36,7 +36,7 @@ import type {
 } from "../lib/types";
 import { STATUS_COLUMNS } from "../lib/types";
 import { Toast, useToast } from "../lib/use-toast";
-import { ChevronsDown,ChevronsUp } from "lucide-react";
+import {CircleChevronDown, CircleChevronUp} from "lucide-react";
 
 const PRIORITY_LABEL: Record<TaskPriority, string> = {
   critical: "Critical",
@@ -56,6 +56,13 @@ const STATUS_LABEL: Record<TaskStatus, string> = {
   in_progress: "In Progress",
   in_review: "In Review",
   done: "Done",
+};
+const STATUS_LABEL_COLOR: Record<TaskStatus, string> = {
+  backlog: "#94a3b8",
+  todo: "#60a5fa",
+  in_progress: "#facc15",
+  in_review: "#c084fc",
+  done: "#34d399",
 };
 const P_DOT: Record<TaskPriority, string> = {
   critical: "#ef4444",
@@ -79,6 +86,7 @@ export function BoardScreen() {
   const { user, accessToken, signOut } = useAuth();
   const [tasks, setTasks] = useState<Task[]>([]);
   const [expanded, setExpanded] = useState<TaskStatus | null>(null);
+  const [statsExpanded, setStatsExpanded] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -186,6 +194,40 @@ export function BoardScreen() {
     });
     return out;
   }, [filtered]);
+
+  const bugStats = useMemo(() => {
+    // Keep dashboard math stable by using the full board dataset (not active filters).
+    const bugTasks = tasks;
+    const doneBugCount = bugTasks.filter((task) => task.status === "done").length;
+    const totalBugCount = bugTasks.length;
+    const openBugCount = totalBugCount - doneBugCount;
+    const highSeverityOpenBugs = bugTasks.filter(
+      (task) =>
+        task.status !== "done" &&
+        (task.priority === "critical" || task.priority === "high")
+    ).length;
+    const completionRate = totalBugCount
+      ? Math.round((doneBugCount / totalBugCount) * 100)
+      : 0;
+
+    return {
+      total: totalBugCount,
+      open: openBugCount,
+      highSeverity: highSeverityOpenBugs,
+      done: doneBugCount,
+      completionRate,
+    };
+  }, [tasks]);
+
+  const priorityLegend = useMemo(
+    () => [
+      { key: "critical", label: "Critical", color: P_DOT.critical },
+      { key: "high", label: "High", color: P_DOT.high },
+      { key: "medium", label: "Medium", color: P_DOT.medium },
+      { key: "low", label: "Low", color: P_DOT.low },
+    ],
+    []
+  );
 
   const openCreate = () => {
     setForm({
@@ -392,9 +434,21 @@ export function BoardScreen() {
           {STATUS_COLUMNS.map((col) => {
             const open = expanded === col.id;
             return (
-              <View key={col.id} style={[s.column, {boxShadow: open ? "2px 2px 5px rgba(62, 106, 163, 0.58)" : "none"}]}>
+              <View key={col.id} style={s.column}>
                 <Pressable style={s.colHead} onPress={() => setExpanded((prev) => (prev === col.id ? null : col.id))}>
-                  <Text style={s.colTitle}>{col.label}</Text>
+                  <View style={s.colHeadLeft}>
+                    <Text style={[s.colTitle, { color: STATUS_LABEL_COLOR[col.id] }]}>{col.label}</Text>
+                    {open ? (
+                      <View style={s.legendWrap}>
+                        {priorityLegend.map((item) => (
+                          <View key={item.key} style={s.legendItem}>
+                            <View style={[s.legendDot, { backgroundColor: item.color }]} />
+                            <Text style={s.legendText}>{item.label}</Text>
+                          </View>
+                        ))}
+                      </View>
+                    ) : null}
+                  </View>
                   <View style={s.colHeadRight}>
                     <Text style={s.count}>
                       {grouped[col.id].length}
@@ -402,7 +456,7 @@ export function BoardScreen() {
                         <Text style={[s.countUnread, {paddingLeft: 4}]}>({unreadByStatus[col.id]})</Text>
                       ) : null}
                     </Text>
-                    {open ? <ChevronsUp size={16} color="#64748b" /> : <ChevronsDown size={16} color="#64748b" />}
+                    {open ? <CircleChevronUp size={16} color="#64748b" /> : <CircleChevronDown size={16} color="#64748b" />}
                   </View>
                 </Pressable>
                 {open ? (
@@ -447,6 +501,49 @@ export function BoardScreen() {
               </View>
             );
           })}
+        </View>
+
+        <View style={s.statsWrap}>
+          <Pressable style={[s.colHead, s.statsHead]} onPress={() => setStatsExpanded((prev) => !prev)}>
+            <Text style={s.statsTitle}>Boring Stats</Text>
+            <View style={s.colHeadRight}>
+              {statsExpanded ? (
+                <CircleChevronUp size={16} color="#64748b" />
+              ) : (
+                <CircleChevronDown size={16} color="#64748b" />
+              )}
+            </View>
+          </Pressable>
+          {statsExpanded ? (
+            <View style={s.statsGrid}>
+              <View style={s.statsRow}>
+                <View style={s.statCard}>
+                  <Text style={s.statLabel}>Total Bugs</Text>
+                  <Text style={s.statValue}>{bugStats.total}</Text>
+                </View>
+                <View style={s.statCard}>
+                  <Text style={s.statLabel}>Open Bugs</Text>
+                  <Text style={[s.statValue, s.statWarn]}>{bugStats.open}</Text>
+                </View>
+              </View>
+              <View style={s.statsRow}>
+                <View style={s.statCard}>
+                  <Text style={s.statLabel}>High Severity</Text>
+                  <Text style={[s.statValue, s.statDanger]}>{bugStats.highSeverity}</Text>
+                </View>
+                <View style={s.statCard}>
+                  <Text style={s.statLabel}>Done Bugs</Text>
+                  <Text style={[s.statValue, s.statGood]}>{bugStats.done}</Text>
+                </View>
+              </View>
+              <View style={s.statsRow}>
+                <View style={s.statCard}>
+                  <Text style={s.statLabel}>Bug Completion</Text>
+                  <Text style={s.statValue}>{bugStats.completionRate}%</Text>
+                </View>
+              </View>
+            </View>
+          ) : null}
         </View>
       </ScrollView>
 
@@ -602,11 +699,27 @@ const s = StyleSheet.create({
   ghostText: { color: "#e2e8f0", fontSize: 12, fontWeight: "600" },
   chip: { height: 32, borderWidth: 1, borderColor: "#475569", borderRadius: 999, backgroundColor: "#111827", justifyContent: "center", paddingHorizontal: 10 },
   chipText: { color: "#cbd5e1", fontSize: 11, fontWeight: "600" },
+  statsWrap: { borderWidth: 1, borderColor: "#1e293b", borderRadius: 10, backgroundColor: "#0b1220", padding: 10, gap: 8 },
+  statsHead: { paddingVertical: 1 },
+  statsTitle: { color: "#cbd5e1", fontSize: 13, fontWeight: "600" },
+  statsGrid: { gap: 6 },
+  statsRow: { flexDirection: "row", gap: 6 },
+  statCard: { flex: 1, borderWidth: 1, borderColor: "#334155", borderRadius: 8, backgroundColor: "#111827", paddingVertical: 8, paddingHorizontal: 9, gap: 3 },
+  statLabel: { color: "#94a3b8", fontSize: 11, fontWeight: "600" },
+  statValue: { color: "#e2e8f0", fontSize: 14, fontWeight: "800" },
+  statWarn: { color: "#facc15" },
+  statDanger: { color: "#f87171" },
+  statGood: { color: "#34d399" },
   stack: { flexDirection: "column", gap: 10 },
   column: { borderWidth: 1, borderColor: "#334155", borderRadius: 12, backgroundColor: "#111827", padding: 8, gap: 8 },
   colHead: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
+  colHeadLeft: { flexDirection: "row", alignItems: "center", gap: 8, flex: 1, paddingRight: 8, flexWrap: "wrap" },
   colHeadRight: { flexDirection: "row", alignItems: "center", gap: 6 },
   colTitle: { color: "#e2e8f0", fontSize: 13, fontWeight: "600" },
+  legendWrap: { flexDirection: "row", alignItems: "center", gap: 6, flexWrap: "wrap" },
+  legendItem: { flexDirection: "row", alignItems: "center", gap: 4 },
+  legendDot: { width: 7, height: 7, borderRadius: 99 },
+  legendText: { color: "#94a3b8", fontSize: 10, fontWeight: "600" },
   count: { color: "#94a3b8", fontSize: 12, fontWeight: "700" },
   countUnread: { color: "#0e923f" },
   empty: { color: "#94a3b8", fontSize: 12, textAlign: "center", paddingVertical: 8 },
@@ -614,7 +727,7 @@ const s = StyleSheet.create({
   unreadMark: { position: "absolute", top: 5, right: 8, color: "#0e923f", fontSize: 14, fontWeight: "800" },
   key: { color: "#94a3b8", fontSize: 11, fontWeight: "600" },
   taskTitle: { color: "#e2e8f0", fontSize: 12, fontWeight: "700" },
-  desc: { color: "#cbd5e1", fontSize: 12, lineHeight: 18 },
+  desc: { color: "#94a3b8", fontSize: 12, lineHeight: 18 },
   smallBtn: { borderWidth: 1, borderColor: "#475569", borderRadius: 8, backgroundColor: "#111827", paddingHorizontal: 9, paddingVertical: 7 },
   smallTxt: { color: "#cbd5e1", fontSize: 11, fontWeight: "600" },
   smallDel: { borderColor: "#fca5a5", backgroundColor: "#7f1d1d" },

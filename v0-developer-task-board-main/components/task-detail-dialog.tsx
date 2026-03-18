@@ -555,6 +555,22 @@ export function TaskDetailDialog({
             </div>
             <div className="flex flex-col gap-1">
               <span className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+                Story Points
+              </span>
+              <span className="text-sm text-foreground">
+                {task.story_points ?? "Not estimated"}
+              </span>
+            </div>
+            <div className="flex flex-col gap-1">
+              <span className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+                Sprint
+              </span>
+              <span className="text-sm text-foreground">
+                {task.sprint_id ? "Assigned" : "Backlog"}
+              </span>
+            </div>
+            <div className="flex flex-col gap-1">
+              <span className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
                 Created
               </span>
               <div className="flex items-center gap-1.5">
@@ -563,6 +579,14 @@ export function TaskDetailDialog({
                   {formatDateTime(task.created_at)}
                 </span>
               </div>
+            </div>
+            <div className="flex flex-col gap-1">
+              <span className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+                Completed
+              </span>
+              <span className="text-sm text-foreground">
+                {task.completed_at ? formatDateTime(task.completed_at) : "Not done"}
+              </span>
             </div>
             <div className="flex flex-col gap-1">
               <span className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">

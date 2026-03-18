@@ -17,7 +17,9 @@ import {
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
 import type {
+  Sprint,
   Task,
+  StoryPointValue,
   TaskStatus,
   TaskPriority,
   TaskType,
@@ -28,6 +30,8 @@ import { KanbanColumn } from "./kanban-column";
 import { TaskCard } from "./task-card";
 import { TaskDialog } from "./task-dialog";
 import { TaskDetailDialog } from "./task-detail-dialog";
+import { SprintBurndownChart } from "./sprint-burndown-chart";
+import { SprintManagementDialog } from "./sprint-management-dialog";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -61,6 +65,21 @@ export function KanbanBoard() {
     mutate,
   } = useSWR<Task[]>("/api/tasks", fetcher, { fallbackData: [] });
 
+  const sprintFetcher = useCallback(
+    async (url: string): Promise<Sprint[]> => {
+      const res = await authFetch(url);
+      if (!res.ok) throw new Error("Failed to fetch sprints");
+      const json = await res.json();
+      return Array.isArray(json) ? (json as Sprint[]) : [];
+    },
+    [authFetch]
+  );
+
+  const {
+    data: sprints,
+    mutate: mutateSprints,
+  } = useSWR<Sprint[]>("/api/sprints", sprintFetcher, { fallbackData: [] });
+
   useEffect(() => {
     const handleTasksChanged = () => {
       mutate();
@@ -74,6 +93,7 @@ export function KanbanBoard() {
   const [defaultStatus, setDefaultStatus] = useState<TaskStatus>("backlog");
   const [activeTask, setActiveTask] = useState<Task | null>(null);
   const [viewingTask, setViewingTask] = useState<Task | null>(null);
+  const [sprintDialogOpen, setSprintDialogOpen] = useState(false);
   const [pendingDeleteTaskId, setPendingDeleteTaskId] = useState<string | null>(
     null
   );
@@ -85,6 +105,14 @@ export function KanbanBoard() {
     "all"
   );
   const [filterType, setFilterType] = useState<TaskType | "all">("all");
+  const [sprintFilter, setSprintFilter] = useState<"all" | "active" | "backlog">(
+    "all"
+  );
+
+  const activeSprint = useMemo(
+    () => sprints?.find((sprint) => sprint.status === "active") ?? null,
+    [sprints]
+  );
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -119,9 +147,33 @@ export function KanbanBoard() {
       if (filterPriority !== "all" && task.priority !== filterPriority)
         return false;
       if (filterType !== "all" && task.type !== filterType) return false;
+
+      if (sprintFilter === "backlog") {
+        return task.sprint_id === null;
+      }
+
+      if (sprintFilter === "active" && activeSprint) {
+        return task.sprint_id === activeSprint.id || task.sprint_id === null;
+      }
+
+      if (sprintFilter === "active" && !activeSprint) {
+        return task.sprint_id === null;
+      }
+
       return true;
     });
-  }, [tasks, searchQuery, filterPriority, filterType]);
+  }, [tasks, searchQuery, filterPriority, filterType, sprintFilter, activeSprint]);
+
+  const activeSprintTasks = useMemo(() => {
+    if (!activeSprint) return filteredTasks;
+    if (sprintFilter !== "active") return filteredTasks;
+    return filteredTasks.filter((task) => task.sprint_id === activeSprint.id);
+  }, [filteredTasks, activeSprint, sprintFilter]);
+
+  const backlogTasks = useMemo(() => {
+    if (sprintFilter !== "active" || !activeSprint) return [];
+    return filteredTasks.filter((task) => task.sprint_id === null);
+  }, [filteredTasks, sprintFilter, activeSprint]);
 
   const tasksByStatus = useMemo(() => {
     const map: Record<TaskStatus, Task[]> = {
@@ -131,11 +183,63 @@ export function KanbanBoard() {
       in_review: [],
       done: [],
     };
-    for (const task of filteredTasks) {
+    for (const task of activeSprintTasks) {
       map[task.status].push(task);
     }
     return map;
-  }, [filteredTasks]);
+  }, [activeSprintTasks]);
+
+  const backlogByStatus = useMemo(() => {
+    const map: Record<TaskStatus, Task[]> = {
+      backlog: [],
+      todo: [],
+      in_progress: [],
+      in_review: [],
+      done: [],
+    };
+    for (const task of backlogTasks) {
+      map[task.status].push(task);
+    }
+    return map;
+  }, [backlogTasks]);
+
+  const storyPointsByStatus = useMemo(() => {
+    const sums: Record<TaskStatus, number> = {
+      backlog: 0,
+      todo: 0,
+      in_progress: 0,
+      in_review: 0,
+      done: 0,
+    };
+
+    Object.entries(tasksByStatus).forEach(([status, statusTasks]) => {
+      sums[status as TaskStatus] = statusTasks.reduce(
+        (sum, task) => sum + (task.story_points || 0),
+        0
+      );
+    });
+
+    return sums;
+  }, [tasksByStatus]);
+
+  const backlogStoryPointsByStatus = useMemo(() => {
+    const sums: Record<TaskStatus, number> = {
+      backlog: 0,
+      todo: 0,
+      in_progress: 0,
+      in_review: 0,
+      done: 0,
+    };
+
+    Object.entries(backlogByStatus).forEach(([status, statusTasks]) => {
+      sums[status as TaskStatus] = statusTasks.reduce(
+        (sum, task) => sum + (task.story_points || 0),
+        0
+      );
+    });
+
+    return sums;
+  }, [backlogByStatus]);
 
   const handleCreateTask = useCallback(
     async (data: {
@@ -146,6 +250,8 @@ export function KanbanBoard() {
       type: TaskType;
       labels: string[];
       assignee: string;
+      sprintId: string | null;
+      storyPoints: StoryPointValue | null;
     }) => {
       try {
         const res = await authFetch("/api/tasks", {
@@ -156,6 +262,7 @@ export function KanbanBoard() {
         if (!res.ok) throw new Error("Failed to create task");
         toast.success("Task created");
         mutate();
+        window.dispatchEvent(new CustomEvent("tasks:changed"));
         setDialogOpen(false);
       } catch {
         toast.error("Failed to create task");
@@ -173,6 +280,8 @@ export function KanbanBoard() {
       type: TaskType;
       labels: string[];
       assignee: string;
+      sprintId: string | null;
+      storyPoints: StoryPointValue | null;
     }) => {
       if (!editingTask) return;
       try {
@@ -184,6 +293,7 @@ export function KanbanBoard() {
         if (!res.ok) throw new Error("Failed to update task");
         toast.success("Task updated");
         mutate();
+        window.dispatchEvent(new CustomEvent("tasks:changed"));
         setDialogOpen(false);
         setEditingTask(null);
       } catch {
@@ -213,6 +323,7 @@ export function KanbanBoard() {
           toast.success("Task deleted");
           // Revalidate in background to ensure consistency
           mutate();
+          window.dispatchEvent(new CustomEvent("tasks:changed"));
         }
       } catch {
         toast.error("Failed to delete task");
@@ -240,6 +351,44 @@ export function KanbanBoard() {
   const openDeleteDialog = useCallback((taskId: string) => {
     setPendingDeleteTaskId(taskId);
   }, []);
+
+  const handleActivateSprint = useCallback(
+    async (sprintId: string) => {
+      try {
+        if (activeSprint && activeSprint.id !== sprintId) {
+          const clearRes = await authFetch(`/api/sprints/${activeSprint.id}`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ status: "planned" }),
+          });
+          if (!clearRes.ok) {
+            throw new Error("Failed to clear previous active sprint");
+          }
+        }
+
+        if (sprintId) {
+          const res = await authFetch(`/api/sprints/${sprintId}`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ status: "active" }),
+          });
+          if (!res.ok) {
+            const err = await res.json().catch(() => ({}));
+            throw new Error(err?.error || "Failed to activate sprint");
+          }
+          toast.success("Sprint activated");
+        } else if (activeSprint) {
+          toast.success("Active sprint cleared");
+        }
+
+        mutateSprints();
+        window.dispatchEvent(new CustomEvent("tasks:changed"));
+      } catch (err: any) {
+        toast.error(err?.message || "Failed to update active sprint");
+      }
+    },
+    [activeSprint, authFetch, mutateSprints]
+  );
 
   const pendingDeleteTask = useMemo(() => {
     if (!pendingDeleteTaskId || !tasks) return null;
@@ -338,6 +487,7 @@ export function KanbanBoard() {
         });
         if (!res.ok) throw new Error("Failed to move task");
         mutate();
+        window.dispatchEvent(new CustomEvent("tasks:changed"));
       } catch {
         toast.error("Failed to move task");
         mutate();
@@ -381,16 +531,26 @@ export function KanbanBoard() {
     <div className="flex h-screen flex-col bg-background">
       <BoardHeader
         onCreateTask={() => openCreateDialog()}
+        onManageSprints={() => setSprintDialogOpen(true)}
+        onActivateSprint={handleActivateSprint}
         searchQuery={searchQuery}
         onSearchChange={setSearchQuery}
         filterPriority={filterPriority}
         onFilterPriority={setFilterPriority}
         filterType={filterType}
         onFilterType={setFilterType}
+        sprintFilter={sprintFilter}
+        onSprintFilterChange={setSprintFilter}
+        sprints={sprints ?? []}
+        activeSprint={activeSprint}
         statusCounts={statusCounts}
       />
 
-      <div className="flex flex-1 gap-4 overflow-x-auto p-4 lg:gap-3">
+      <div className="space-y-3 p-4 pb-0">
+        <SprintBurndownChart />
+      </div>
+
+      <div className="flex flex-1 flex-col gap-4 overflow-y-auto p-4 lg:gap-3">
         <DndContext
           sensors={sensors}
           collisionDetection={closestCorners}
@@ -398,19 +558,52 @@ export function KanbanBoard() {
           onDragOver={handleDragOver}
           onDragEnd={handleDragEnd}
         >
-          {STATUS_COLUMNS.map((column) => (
-            <KanbanColumn
-              key={column.id}
-              id={column.id}
-              title={column.label}
-              info={column.info}
-              tasks={tasksByStatus[column.id]}
-              onCreateTask={openCreateDialog}
-              onEditTask={openEditDialog}
-              onDeleteTask={openDeleteDialog}
-              onViewTask={openViewDialog}
-            />
-          ))}
+          <div className="flex gap-4 overflow-x-auto lg:gap-3">
+            {STATUS_COLUMNS.map((column) => (
+              <KanbanColumn
+                key={column.id}
+                id={column.id}
+                title={column.label}
+                info={column.info}
+                tasks={tasksByStatus[column.id]}
+                totalStoryPoints={storyPointsByStatus[column.id]}
+                onCreateTask={openCreateDialog}
+                onEditTask={openEditDialog}
+                onDeleteTask={openDeleteDialog}
+                onViewTask={openViewDialog}
+              />
+            ))}
+          </div>
+
+          {sprintFilter === "active" && activeSprint && (
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-semibold text-foreground">
+                  Product Backlog (No Sprint)
+                </h3>
+                <span className="text-xs text-muted-foreground">
+                  {backlogTasks.length} task(s)
+                </span>
+              </div>
+              <div className="flex gap-4 overflow-x-auto lg:gap-3">
+                {STATUS_COLUMNS.map((column) => (
+                  <KanbanColumn
+                    key={`backlog-${column.id}`}
+                    id={column.id}
+                    droppableId={`backlog-${column.id}`}
+                    title={column.label}
+                    info={column.info}
+                    tasks={backlogByStatus[column.id]}
+                    totalStoryPoints={backlogStoryPointsByStatus[column.id]}
+                    onCreateTask={openCreateDialog}
+                    onEditTask={openEditDialog}
+                    onDeleteTask={openDeleteDialog}
+                    onViewTask={openViewDialog}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
 
           <DragOverlay>
             {activeTask && (
@@ -436,6 +629,19 @@ export function KanbanBoard() {
         onSubmit={editingTask ? handleUpdateTask : handleCreateTask}
         initialData={editingTask}
         defaultStatus={defaultStatus}
+        availableSprints={sprints ?? []}
+        defaultSprintId={activeSprint?.id ?? null}
+      />
+
+      <SprintManagementDialog
+        open={sprintDialogOpen}
+        onClose={() => setSprintDialogOpen(false)}
+        sprints={sprints ?? []}
+        onChanged={() => {
+          mutateSprints();
+          mutate();
+          window.dispatchEvent(new CustomEvent("tasks:changed"));
+        }}
       />
 
       <TaskDetailDialog

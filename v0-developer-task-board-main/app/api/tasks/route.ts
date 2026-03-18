@@ -1,4 +1,5 @@
 import { authenticateRequest } from "@/lib/auth";
+import { STORY_POINTS_SCALE } from "@/lib/types";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { resolveBoardOwnerUserId } from "@/lib/team-board";
 import { NextResponse } from "next/server";
@@ -44,6 +45,27 @@ export async function POST(request: Request) {
   const supabase = createAdminClient();
   const body = await request.json();
   const boardOwnerUserId = await resolveBoardOwnerUserId(authUser);
+  const storyPoints =
+    body.storyPoints === null || body.storyPoints === undefined
+      ? null
+      : Number(body.storyPoints);
+
+  if (
+    storyPoints !== null &&
+    (!Number.isInteger(storyPoints) ||
+      !STORY_POINTS_SCALE.includes(storyPoints as (typeof STORY_POINTS_SCALE)[number]))
+  ) {
+    return NextResponse.json(
+      { error: "storyPoints must be one of 1, 2, 3, 5, 8, 13, 21 or null" },
+      { status: 400 }
+    );
+  }
+
+  const status = body.status || "backlog";
+  const completedAt =
+    status === "done"
+      ? body.completedAt || new Date().toISOString()
+      : body.completedAt || null;
 
   // Get or create counter for the resolved board owner.
   const { data: counterData } = await supabase
@@ -72,7 +94,7 @@ export async function POST(request: Request) {
     .insert({
       title: body.title,
       description: body.description || "",
-      status: body.status || "backlog",
+      status,
       priority: body.priority || "medium",
       type: body.type || "task",
       labels: body.labels || [],
@@ -80,6 +102,9 @@ export async function POST(request: Request) {
       task_key: taskKey,
       user_id: boardOwnerUserId,
       report_id: body.report_id || null,
+      sprint_id: body.sprintId || null,
+      story_points: storyPoints,
+      completed_at: completedAt,
     })
     .select()
     .single();

@@ -10,6 +10,7 @@ import {
   Github,
   GitBranch,
   Handshake,
+  Sigma,
 } from "lucide-react";
 import type { Task, TaskPriority } from "@/lib/types";
 import { TYPE_CONFIG } from "@/lib/types";
@@ -123,6 +124,13 @@ export function TaskCard({ task, onEdit, onDelete, onView }: TaskCardProps) {
           )}
 
           <div className="mt-2 flex items-center gap-2 flex-wrap">
+              {typeof task.story_points === "number" && (
+                <div className="inline-flex items-center gap-1 rounded-full border border-blue-500/30 bg-blue-500/10 px-2 py-0.5 text-[10px] font-medium text-blue-300">
+                  <Sigma className="h-3 w-3" />
+                  <span>{task.story_points} SP</span>
+                </div>
+              )}
+
               {typeof task.comments_count === "number" && task.comments_count > 0 && (
                 <div
                   className="inline-flex items-center gap-1 rounded-full border border-amber-500/30 bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-medium text-amber-300"

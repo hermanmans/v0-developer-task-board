@@ -3,20 +3,29 @@
 import React from "react"
 
 import { useState, useEffect, useCallback } from "react";
-import { X, Plus } from "lucide-react";
+import { X, Plus, CircleHelp } from "lucide-react";
 import type {
   Task,
+  Sprint,
+  StoryPointValue,
   TaskStatus,
   TaskPriority,
   TaskType,
 } from "@/lib/types";
 import {
+  STORY_POINTS_SCALE,
   STATUS_COLUMNS,
   PRIORITY_CONFIG,
   TYPE_CONFIG,
   LABEL_PRESETS,
 } from "@/lib/types";
 import { cn } from "@/lib/utils";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "./ui/tooltip";
 
 interface TaskDialogProps {
   open: boolean;
@@ -29,9 +38,13 @@ interface TaskDialogProps {
     type: TaskType;
     labels: string[];
     assignee: string;
+    sprintId: string | null;
+    storyPoints: StoryPointValue | null;
   }) => void;
   initialData?: Task | null;
   defaultStatus?: TaskStatus;
+  availableSprints: Sprint[];
+  defaultSprintId?: string | null;
 }
 
 export function TaskDialog({
@@ -40,6 +53,8 @@ export function TaskDialog({
   onSubmit,
   initialData,
   defaultStatus = "backlog",
+  availableSprints,
+  defaultSprintId = null,
 }: TaskDialogProps) {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -48,6 +63,8 @@ export function TaskDialog({
   const [type, setType] = useState<TaskType>("task");
   const [labels, setLabels] = useState<string[]>([]);
   const [assignee, setAssignee] = useState("");
+  const [sprintId, setSprintId] = useState<string | null>(defaultSprintId);
+  const [storyPoints, setStoryPoints] = useState<StoryPointValue | null>(null);
   const [customLabel, setCustomLabel] = useState("");
 
   useEffect(() => {
@@ -59,6 +76,8 @@ export function TaskDialog({
       setType(initialData.type);
       setLabels(initialData.labels);
       setAssignee(initialData.assignee);
+      setSprintId(initialData.sprint_id);
+      setStoryPoints(initialData.story_points);
     } else {
       setTitle("");
       setDescription("");
@@ -67,8 +86,10 @@ export function TaskDialog({
       setType("task");
       setLabels([]);
       setAssignee("");
+      setSprintId(defaultSprintId);
+      setStoryPoints(null);
     }
-  }, [initialData, defaultStatus, open]);
+  }, [initialData, defaultStatus, open, defaultSprintId]);
 
   const handleSubmit = useCallback(
     (e: React.FormEvent) => {
@@ -82,9 +103,22 @@ export function TaskDialog({
         type,
         labels,
         assignee: assignee.trim(),
+        sprintId,
+        storyPoints,
       });
     },
-    [title, description, status, priority, type, labels, assignee, onSubmit]
+    [
+      title,
+      description,
+      status,
+      priority,
+      type,
+      labels,
+      assignee,
+      sprintId,
+      storyPoints,
+      onSubmit,
+    ]
   );
 
   const toggleLabel = (label: string) => {
@@ -104,6 +138,7 @@ export function TaskDialog({
   if (!open) return null;
 
   return (
+    <TooltipProvider>
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       <div
         className="absolute inset-0 bg-background/80 backdrop-blur-sm"
@@ -225,6 +260,107 @@ export function TaskDialog({
             </div>
           </div>
 
+          <div className="grid grid-cols-2 gap-3">
+            <div className="flex flex-col gap-1.5">
+              <label className="text-sm font-medium text-foreground">Sprint</label>
+              <select
+                value={sprintId || ""}
+                onChange={(e) => setSprintId(e.target.value || null)}
+                className="h-10 rounded-lg border border-input bg-background px-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+              >
+                <option value="">Backlog (No Sprint)</option>
+                {availableSprints.map((sprint) => (
+                  <option key={sprint.id} value={sprint.id}>
+                    {sprint.name} ({sprint.status})
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="flex flex-col gap-1.5">
+              <div className="flex items-center gap-1.5">
+                <label className="text-sm font-medium text-foreground">Story Points</label>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      type="button"
+                      className="text-muted-foreground transition-colors hover:text-foreground"
+                      aria-label="Story points estimation guide"
+                    >
+                      <CircleHelp className="h-3.5 w-3.5" />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent className="max-w-[360px] p-3" side="left">
+                    <div className="space-y-2">
+                      <p className="text-xs font-semibold">Story Point Guide</p>
+                      <div className="overflow-hidden rounded-md border border-border">
+                        <div className="grid grid-cols-[1.2fr_.7fr_1fr] bg-secondary/70 px-2 py-1 text-[10px] font-semibold">
+                          <span>Task</span>
+                          <span>Points</span>
+                          <span>Why</span>
+                        </div>
+                        <div className="grid grid-cols-[1.2fr_.7fr_1fr] px-2 py-1 text-[10px]">
+                          <span>Fix typo</span>
+                          <span>1</span>
+                          <span>trivial</span>
+                        </div>
+                        <div className="grid grid-cols-[1.2fr_.7fr_1fr] border-t border-border px-2 py-1 text-[10px]">
+                          <span>Simple bug fix</span>
+                          <span>2-3</span>
+                          <span>small effort</span>
+                        </div>
+                        <div className="grid grid-cols-[1.2fr_.7fr_1fr] border-t border-border px-2 py-1 text-[10px]">
+                          <span>Medium feature</span>
+                          <span>5</span>
+                          <span>moderate complexity</span>
+                        </div>
+                        <div className="grid grid-cols-[1.2fr_.7fr_1fr] border-t border-border px-2 py-1 text-[10px]">
+                          <span>Complex bug</span>
+                          <span>8</span>
+                          <span>lots of unknowns</span>
+                        </div>
+                        <div className="grid grid-cols-[1.2fr_.7fr_1fr] border-t border-border px-2 py-1 text-[10px]">
+                          <span>Huge feature</span>
+                          <span>13+</span>
+                          <span>probably should be split</span>
+                        </div>
+                      </div>
+                    </div>
+                  </TooltipContent>
+                </Tooltip>
+              </div>
+              <div className="flex flex-wrap gap-1.5 rounded-lg border border-input bg-background px-2 py-2">
+                <button
+                  type="button"
+                  onClick={() => setStoryPoints(null)}
+                  className={cn(
+                    "rounded-md border px-2 py-1 text-xs transition-colors",
+                    storyPoints === null
+                      ? "border-primary bg-primary/15 text-primary"
+                      : "border-border bg-background text-muted-foreground"
+                  )}
+                >
+                  None
+                </button>
+                {STORY_POINTS_SCALE.map((points) => (
+                  <button
+                    key={points}
+                    type="button"
+                    onClick={() => setStoryPoints(points)}
+                    className={cn(
+                      "rounded-md border px-2 py-1 text-xs transition-colors",
+                      storyPoints === points
+                        ? "border-primary bg-primary/15 text-primary"
+                        : "border-border bg-background text-muted-foreground"
+                    )}
+                  >
+                    {points}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+
           <div className="flex flex-col gap-1.5">
             <label className="text-sm font-medium text-foreground">
               Labels
@@ -305,5 +441,6 @@ export function TaskDialog({
         </form>
       </div>
     </div>
+    </TooltipProvider>
   );
 }

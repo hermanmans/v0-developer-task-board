@@ -9,6 +9,11 @@ export type TaskPriority = "critical" | "high" | "medium" | "low";
 
 export type TaskType = "bug" | "feature" | "improvement" | "task";
 
+export type SprintStatus = "planned" | "active" | "completed";
+
+export const STORY_POINTS_SCALE = [1, 2, 3, 5, 8, 13, 21] as const;
+export type StoryPointValue = (typeof STORY_POINTS_SCALE)[number];
+
 export interface Task {
   id: string;
   title: string;
@@ -22,10 +27,24 @@ export interface Task {
   task_key: string;
   user_id: string;
   report_id: string | null;
+  sprint_id: string | null;
+  story_points: StoryPointValue | null;
+  completed_at: string | null;
   github_repo: string | null;
   github_issue_url: string | null;
   github_issue_number: number | null;
   github_branch: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface Sprint {
+  id: string;
+  name: string;
+  start_date: string;
+  end_date: string;
+  status: SprintStatus;
+  user_id: string;
   created_at: string;
   updated_at: string;
 }

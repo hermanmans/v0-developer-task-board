@@ -10,6 +10,7 @@ import {
   Bug,
   LogOut,
   Plus,
+  CalendarDays,
   Search,
   Filter,
   X,
@@ -19,7 +20,7 @@ import {
   GitPullRequest,
   CheckCircle2,
 } from "lucide-react";
-import type { TaskPriority, TaskType, TaskStatus } from "@/lib/types";
+import type { Sprint, TaskPriority, TaskType, TaskStatus } from "@/lib/types";
 import { PRIORITY_CONFIG, TYPE_CONFIG } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
@@ -33,12 +34,18 @@ interface StatusCounts {
 
 interface BoardHeaderProps {
   onCreateTask: () => void;
+  onManageSprints: () => void;
+  onActivateSprint: (sprintId: string) => void;
   searchQuery: string;
   onSearchChange: (value: string) => void;
   filterPriority: TaskPriority | "all";
   onFilterPriority: (value: TaskPriority | "all") => void;
   filterType: TaskType | "all";
   onFilterType: (value: TaskType | "all") => void;
+  sprintFilter: "all" | "active" | "backlog";
+  onSprintFilterChange: (value: "all" | "active" | "backlog") => void;
+  sprints: Sprint[];
+  activeSprint: Sprint | null;
   statusCounts: StatusCounts;
 }
 
@@ -89,12 +96,18 @@ const PRIORITY_LEGEND_DOT_CLASS: Record<TaskPriority, string> = {
 
 export function BoardHeader({
   onCreateTask,
+  onManageSprints,
+  onActivateSprint,
   searchQuery,
   onSearchChange,
   filterPriority,
   onFilterPriority,
   filterType,
   onFilterType,
+  sprintFilter,
+  onSprintFilterChange,
+  sprints,
+  activeSprint,
   statusCounts,
 }: BoardHeaderProps) {
   const router = useRouter();
@@ -115,7 +128,10 @@ export function BoardHeader({
   };
 
   const hasActiveFilters =
-    filterPriority !== "all" || filterType !== "all" || searchQuery !== "";
+    filterPriority !== "all" ||
+    filterType !== "all" ||
+    searchQuery !== "" ||
+    sprintFilter !== "all";
 
   const totalTasks = Object.values(statusCounts).reduce((a, b) => a + b, 0);
 
@@ -144,6 +160,13 @@ export function BoardHeader({
 
         <div className="flex items-center gap-2">
           <button
+            onClick={onManageSprints}
+            className="flex h-9 items-center gap-2 rounded-lg border border-input bg-background px-3 text-sm font-medium text-foreground transition-colors hover:bg-secondary"
+          >
+            <CalendarDays className="h-4 w-4" />
+            Sprints
+          </button>
+          <button
             onClick={onCreateTask}
             className="flex h-9 items-center gap-2 rounded-lg bg-primary px-4 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
           >
@@ -161,6 +184,22 @@ export function BoardHeader({
       </div>
 
       <div className="flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground">
+        <div className="inline-flex items-center gap-2 rounded-md border border-border bg-secondary/40 px-2 py-1 text-xs">
+          <CalendarDays className="h-3.5 w-3.5" />
+          <span>Active Sprint:</span>
+          <select
+            value={activeSprint?.id || ""}
+            onChange={(e) => onActivateSprint(e.target.value)}
+            className="h-7 rounded-md border border-input bg-background px-2 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+          >
+            <option value="">None</option>
+            {sprints.map((sprint) => (
+              <option key={sprint.id} value={sprint.id}>
+                {sprint.name}
+              </option>
+            ))}
+          </select>
+        </div>
         <span className="mr-1 text-xs font-medium text-foreground/80">
           Priority Legend
         </span>
@@ -198,6 +237,18 @@ export function BoardHeader({
           <div className="flex items-center gap-1.5">
             <Filter className="h-3 w-3 text-muted-foreground" />
             <select
+              value={sprintFilter}
+              onChange={(e) =>
+                onSprintFilterChange(e.target.value as "all" | "active" | "backlog")
+              }
+              className="h-8 rounded-md border border-input bg-background px-2 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+            >
+              <option value="all">All Tasks</option>
+              <option value="active">Active Sprint + Backlog</option>
+              <option value="backlog">Backlog Only</option>
+            </select>
+
+            <select
               value={filterPriority}
               onChange={(e) =>
                 onFilterPriority(e.target.value as TaskPriority | "all")
@@ -233,6 +284,7 @@ export function BoardHeader({
                   onSearchChange("");
                   onFilterPriority("all");
                   onFilterType("all");
+                  onSprintFilterChange("all");
                 }}
                 className="flex h-8 items-center gap-1 rounded-md border border-input bg-background px-2 text-xs text-muted-foreground transition-colors hover:text-foreground"
               >

@@ -3,11 +3,14 @@
 import type { ElementType } from "react";
 import {
   Activity,
+  ChartNoAxesCombined,
+  CalendarDays,
   Bell,
   Bug,
   Filter,
   Github,
   GripVertical,
+  Sigma,
   MessageSquare,
   ShieldCheck,
   Users,
@@ -71,6 +74,37 @@ const SECTIONS: {
       "Save encrypted GitHub token and project mappings in Profile settings.",
       "Create GitHub issues and branches directly from task details.",
       "Issue numbers and branch names appear on the task card for quick context.",
+    ],
+  },
+  {
+    title: "Scrum Extensions",
+    icon: CalendarDays,
+    points: [
+      "Create, edit, and delete sprints with dates and status (planned, active, completed).",
+      "Only one sprint can be active at a time; active sprint can be switched from the header.",
+      "Tasks can be assigned to a sprint or kept in backlog (no sprint).",
+      "Board supports sprint-focused filtering and a separate backlog view.",
+    ],
+  },
+  {
+    title: "Story Points & Burndown",
+    icon: ChartNoAxesCombined,
+    points: [
+      "Estimate tasks with Fibonacci story points: 1, 2, 3, 5, 8, 13, 21.",
+      "Use the Story Points helper tooltip in the task dialog for quick estimation guidance.",
+      "Burndown chart shows ideal vs actual remaining points for the active sprint.",
+      "Column totals include story point sums; velocity is shown from completed points.",
+    ],
+  },
+  {
+    title: "Story Point Guide",
+    icon: Sigma,
+    points: [
+      "Fix typo -> 1 point (trivial).",
+      "Simple bug fix -> 2-3 points (small effort).",
+      "Medium feature -> 5 points (moderate complexity).",
+      "Complex bug -> 8 points (lots of unknowns).",
+      "Huge feature -> 13+ points (probably should be split).",
     ],
   },
   {

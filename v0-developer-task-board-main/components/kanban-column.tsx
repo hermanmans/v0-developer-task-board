@@ -13,9 +13,11 @@ import { cn } from "@/lib/utils";
 
 interface KanbanColumnProps {
   id: TaskStatus;
+  droppableId?: string;
   title: string;
   info: string;
   tasks: Task[];
+  totalStoryPoints?: number;
   onCreateTask: (status: TaskStatus) => void;
   onEditTask: (task: Task) => void;
   onDeleteTask: (taskId: string) => void;
@@ -40,15 +42,17 @@ const STATUS_DOT_COLORS: Record<TaskStatus, string> = {
 
 export function KanbanColumn({
   id,
+  droppableId,
   title,
   info,
   tasks,
+  totalStoryPoints = 0,
   onCreateTask,
   onEditTask,
   onDeleteTask,
   onViewTask,
 }: KanbanColumnProps) {
-  const { isOver, setNodeRef } = useDroppable({ id });
+  const { isOver, setNodeRef } = useDroppable({ id: droppableId || id });
   const [showTooltip, setShowTooltip] = useState(false);
 
   return (
@@ -88,6 +92,9 @@ export function KanbanColumn({
             )}
           >
             {tasks.length}
+          </span>
+          <span className="rounded-full border border-border px-1.5 py-0.5 text-[10px] text-muted-foreground">
+            {totalStoryPoints} SP
           </span>
         </div>
         <button

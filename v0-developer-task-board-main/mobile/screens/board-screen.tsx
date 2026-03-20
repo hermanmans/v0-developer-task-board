@@ -36,7 +36,6 @@ import type {
 } from "../lib/types";
 import { STATUS_COLUMNS } from "../lib/types";
 import { Toast, useToast } from "../lib/use-toast";
-import {CircleChevronDown, CircleChevronUp} from "lucide-react";
 
 const PRIORITY_LABEL: Record<TaskPriority, string> = {
   critical: "Critical",
@@ -456,7 +455,7 @@ export function BoardScreen() {
                         <Text style={[s.countUnread, {paddingLeft: 4}]}>({unreadByStatus[col.id]})</Text>
                       ) : null}
                     </Text>
-                    {open ? <CircleChevronUp size={16} color="#64748b" /> : <CircleChevronDown size={16} color="#64748b" />}
+                    <Text style={s.collapseIcon}>{open ? "v" : ">"}</Text>
                   </View>
                 </Pressable>
                 {open ? (
@@ -507,11 +506,7 @@ export function BoardScreen() {
           <Pressable style={[s.colHead, s.statsHead]} onPress={() => setStatsExpanded((prev) => !prev)}>
             <Text style={s.statsTitle}>Boring Stats</Text>
             <View style={s.colHeadRight}>
-              {statsExpanded ? (
-                <CircleChevronUp size={16} color="#64748b" />
-              ) : (
-                <CircleChevronDown size={16} color="#64748b" />
-              )}
+              <Text style={s.collapseIcon}>{statsExpanded ? "v" : ">"}</Text>
             </View>
           </Pressable>
           {statsExpanded ? (
@@ -715,6 +710,7 @@ const s = StyleSheet.create({
   colHead: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
   colHeadLeft: { flexDirection: "row", alignItems: "center", gap: 8, flex: 1, paddingRight: 8, flexWrap: "wrap" },
   colHeadRight: { flexDirection: "row", alignItems: "center", gap: 6 },
+  collapseIcon: { color: "#64748b", fontSize: 14, fontWeight: "700", width: 12, textAlign: "center" },
   colTitle: { color: "#e2e8f0", fontSize: 13, fontWeight: "600" },
   legendWrap: { flexDirection: "row", alignItems: "center", gap: 6, flexWrap: "wrap" },
   legendItem: { flexDirection: "row", alignItems: "center", gap: 4 },

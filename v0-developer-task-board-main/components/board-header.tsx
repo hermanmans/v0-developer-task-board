@@ -136,7 +136,7 @@ export function BoardHeader({
   const totalTasks = Object.values(statusCounts).reduce((a, b) => a + b, 0);
 
   return (
-    <header className="flex flex-col gap-4 border-b border-border bg-card px-6 py-4">
+    <header className="glass-panel flex flex-col gap-4 rounded-none border-x-0 border-t-0 px-6 py-4">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-blue-500/10">
@@ -161,7 +161,7 @@ export function BoardHeader({
         <div className="flex items-center gap-2">
           <button
             onClick={onManageSprints}
-            className="flex h-9 items-center gap-2 rounded-lg border border-input bg-background px-3 text-sm font-medium text-foreground transition-colors hover:bg-secondary"
+            className="glass-input flex h-9 items-center gap-2 rounded-lg px-3 text-sm font-medium text-foreground transition-colors hover:bg-secondary"
           >
             <CalendarDays className="h-4 w-4" />
             Sprints
@@ -175,7 +175,7 @@ export function BoardHeader({
           </button>
           <button
             onClick={handleLogout}
-            className="flex h-9 w-9 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+            className="flex h-9 w-9 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-secondary/80 hover:text-foreground"
             aria-label="Sign out"
           >
             <LogOut className="h-4 w-4" />
@@ -184,13 +184,13 @@ export function BoardHeader({
       </div>
 
       <div className="flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground">
-        <div className="inline-flex items-center gap-2 rounded-md border border-border bg-secondary/40 px-2 py-1 text-xs">
+        <div className="glass-panel-soft inline-flex items-center gap-2 rounded-md px-2 py-1 text-xs">
           <CalendarDays className="h-3.5 w-3.5" />
           <span>Active Sprint:</span>
           <select
             value={activeSprint?.id || ""}
             onChange={(e) => onActivateSprint(e.target.value)}
-            className="h-7 rounded-md border border-input bg-background px-2 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+            className="glass-input h-7 rounded-md px-2 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
           >
             <option value="">None</option>
             {sprints.map((sprint) => (
@@ -206,7 +206,7 @@ export function BoardHeader({
         {(Object.keys(PRIORITY_CONFIG) as TaskPriority[]).map((priority) => (
           <div
             key={priority}
-            className="inline-flex items-center gap-1 rounded-md border border-border bg-secondary/40 px-2 py-1"
+            className="glass-panel-soft inline-flex items-center gap-1 rounded-md px-2 py-1"
           >
             <span
               className={cn(
@@ -230,7 +230,7 @@ export function BoardHeader({
               placeholder="Search tasks..."
               value={searchQuery}
               onChange={(e) => onSearchChange(e.target.value)}
-              className="h-8 w-full rounded-lg border border-input bg-background pl-8 pr-3 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+              className="glass-input h-8 w-full rounded-lg pl-8 pr-3 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
             />
           </div>
 
@@ -241,7 +241,7 @@ export function BoardHeader({
               onChange={(e) =>
                 onSprintFilterChange(e.target.value as "all" | "active" | "backlog")
               }
-              className="h-8 rounded-md border border-input bg-background px-2 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+              className="glass-input h-8 rounded-md px-2 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
             >
               <option value="all">All Tasks</option>
               <option value="active">Active Sprint + Backlog</option>
@@ -253,7 +253,7 @@ export function BoardHeader({
               onChange={(e) =>
                 onFilterPriority(e.target.value as TaskPriority | "all")
               }
-              className="h-8 rounded-md border border-input bg-background px-2 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+              className="glass-input h-8 rounded-md px-2 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
             >
               <option value="all">All Priorities</option>
               {Object.entries(PRIORITY_CONFIG).map(([key, config]) => (
@@ -268,7 +268,7 @@ export function BoardHeader({
               onChange={(e) =>
                 onFilterType(e.target.value as TaskType | "all")
               }
-              className="h-8 rounded-md border border-input bg-background px-2 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+              className="glass-input h-8 rounded-md px-2 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
             >
               <option value="all">All Types</option>
               {Object.entries(TYPE_CONFIG).map(([key, config]) => (
@@ -286,7 +286,7 @@ export function BoardHeader({
                   onFilterType("all");
                   onSprintFilterChange("all");
                 }}
-                className="flex h-8 items-center gap-1 rounded-md border border-input bg-background px-2 text-xs text-muted-foreground transition-colors hover:text-foreground"
+                className="glass-input flex h-8 items-center gap-1 rounded-md px-2 text-xs text-muted-foreground transition-colors hover:text-foreground"
               >
                 <X className="h-3 w-3" />
                 Clear
@@ -303,7 +303,7 @@ export function BoardHeader({
           {KPI_ITEMS.map(({ status, label, icon: Icon, dotColor }) => (
             <div
               key={status}
-              className="flex items-center gap-2 rounded-lg border border-border bg-secondary/40 px-3 py-1.5"
+              className="glass-panel-soft flex items-center gap-2 rounded-lg px-3 py-1.5"
             >
               <div className="flex items-center gap-1.5">
                 <div className={cn("h-1.5 w-1.5 rounded-full", dotColor)} />

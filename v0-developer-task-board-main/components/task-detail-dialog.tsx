@@ -331,10 +331,10 @@ export function TaskDetailDialog({
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center pt-[10vh]">
       <div
-        className="fixed inset-0 bg-background/80 backdrop-blur-sm"
+        className="fixed inset-0 bg-slate-900/25 backdrop-blur-sm"
         onClick={onClose}
       />
-      <div className="relative z-10 flex w-full max-w-2xl flex-col rounded-xl border border-border bg-card shadow-2xl max-h-[80vh]">
+      <div className="glass-panel relative z-10 flex max-h-[80vh] w-full max-w-2xl flex-col rounded-xl">
         {/* Header */}
         <div className="flex items-start justify-between gap-4 border-b border-border px-6 py-4">
           <div className="flex-1 min-w-0">

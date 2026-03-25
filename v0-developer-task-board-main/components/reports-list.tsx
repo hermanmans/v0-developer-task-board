@@ -304,7 +304,7 @@ export function ReportsList() {
       </div>
 
       {/* Reports List */}
-      <div className="flex-1 overflow-y-auto rounded-lg border border-border">
+      <div className="glass-panel flex-1 overflow-y-auto rounded-lg">
         {isLoading ? (
           <div className="flex items-center justify-center py-20">
             <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />

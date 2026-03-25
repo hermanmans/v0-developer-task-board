@@ -141,10 +141,10 @@ export function TaskDialog({
     <TooltipProvider>
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       <div
-        className="absolute inset-0 bg-background/80 backdrop-blur-sm"
+        className="absolute inset-0 bg-slate-900/25 backdrop-blur-sm"
         onClick={onClose}
       />
-      <div className="relative z-10 w-full max-w-lg rounded-xl border border-border bg-card p-6 shadow-2xl mx-4 max-h-[90vh] overflow-y-auto">
+      <div className="glass-panel relative z-10 mx-4 max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-xl p-6">
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-lg font-semibold text-foreground">
             {initialData ? "Edit Task" : "New Task"}

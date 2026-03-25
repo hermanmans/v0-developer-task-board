@@ -15,17 +15,17 @@ function BoardContent() {
   const [activeTab, setActiveTab] = useState<ActiveTab>("board");
 
   return (
-    <div className="flex h-screen flex-col bg-background">
+    <div className="flex h-screen flex-col bg-background/50">
       {/* Tab Navigation */}
-      <div className="flex-shrink-0 border-b border-border bg-card/50 px-4">
+      <div className="glass-panel flex-shrink-0 rounded-none border-x-0 border-t-0 px-4">
         <nav className="flex items-center gap-1" aria-label="Main navigation">
           <button
             onClick={() => setActiveTab("board")}
             className={cn(
-              "flex items-center gap-2 border-b-2 px-3 py-2.5 text-sm font-medium transition-colors",
+              "flex items-center gap-2 rounded-md border border-transparent px-3 py-2.5 text-sm font-medium transition-all",
               activeTab === "board"
-                ? "border-primary text-foreground"
-                : "border-transparent text-muted-foreground hover:border-border hover:text-foreground"
+                ? "glass-panel-soft border-primary/30 text-foreground"
+                : "text-muted-foreground hover:bg-secondary/70 hover:text-foreground"
             )}
           >
             <LayoutGrid className="h-4 w-4" />
@@ -34,10 +34,10 @@ function BoardContent() {
           <button
             onClick={() => setActiveTab("reports")}
             className={cn(
-              "flex items-center gap-2 border-b-2 px-3 py-2.5 text-sm font-medium transition-colors",
+              "flex items-center gap-2 rounded-md border border-transparent px-3 py-2.5 text-sm font-medium transition-all",
               activeTab === "reports"
-                ? "border-primary text-foreground"
-                : "border-transparent text-muted-foreground hover:border-border hover:text-foreground"
+                ? "glass-panel-soft border-primary/30 text-foreground"
+                : "text-muted-foreground hover:bg-secondary/70 hover:text-foreground"
             )}
           >
             <FileText className="h-4 w-4" />
@@ -46,10 +46,10 @@ function BoardContent() {
           <button
             onClick={() => setActiveTab("profile")}
             className={cn(
-              "flex items-center gap-2 border-b-2 px-3 py-2.5 text-sm font-medium transition-colors",
+              "flex items-center gap-2 rounded-md border border-transparent px-3 py-2.5 text-sm font-medium transition-all",
               activeTab === "profile"
-                ? "border-primary text-foreground"
-                : "border-transparent text-muted-foreground hover:border-border hover:text-foreground"
+                ? "glass-panel-soft border-primary/30 text-foreground"
+                : "text-muted-foreground hover:bg-secondary/70 hover:text-foreground"
             )}
           >
             <User className="h-4 w-4" />
@@ -58,10 +58,10 @@ function BoardContent() {
           <button
             onClick={() => setActiveTab("info")}
             className={cn(
-              "flex items-center gap-2 border-b-2 px-3 py-2.5 text-sm font-medium transition-colors",
+              "flex items-center gap-2 rounded-md border border-transparent px-3 py-2.5 text-sm font-medium transition-all",
               activeTab === "info"
-                ? "border-primary text-foreground"
-                : "border-transparent text-muted-foreground hover:border-border hover:text-foreground"
+                ? "glass-panel-soft border-primary/30 text-foreground"
+                : "text-muted-foreground hover:bg-secondary/70 hover:text-foreground"
             )}
           >
             <Info className="h-4 w-4" />

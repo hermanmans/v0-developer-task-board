@@ -55,7 +55,7 @@ export function SprintBurndownChart() {
 
   if (error) {
     return (
-      <div className="rounded-xl border border-border bg-card p-4">
+      <div className="glass-panel rounded-xl p-4">
         <p className="text-sm text-destructive">Failed to load burndown chart.</p>
       </div>
     );
@@ -63,7 +63,7 @@ export function SprintBurndownChart() {
 
   if (!data?.sprint) {
     return (
-      <div className="rounded-xl border border-border bg-card p-4">
+      <div className="glass-panel rounded-xl p-4">
         <h3 className="text-sm font-semibold text-foreground">Sprint Burndown</h3>
         <p className="mt-2 text-xs text-muted-foreground">
           No active sprint. Activate a sprint to view burndown.
@@ -73,7 +73,7 @@ export function SprintBurndownChart() {
   }
 
   return (
-    <div className="rounded-xl border border-border bg-card p-4">
+    <div className="glass-panel rounded-xl p-4">
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
         <div>
           <h3 className="text-sm font-semibold text-foreground">Sprint Burndown</h3>

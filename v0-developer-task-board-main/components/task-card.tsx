@@ -32,10 +32,10 @@ function formatAssigneeName(name: string) {
 }
 
 const PRIORITY_BORDER_CLASS: Record<TaskPriority, string> = {
-  critical: "border-l-red-500",
-  high: "border-l-orange-500",
-  medium: "border-l-yellow-500",
-  low: "border-l-slate-400",
+  critical: "!border-l-red-500",
+  high: "!border-l-orange-500",
+  medium: "!border-l-yellow-500",
+  low: "!border-l-slate-400",
 };
 
 const PRIORITY_HOVER_BORDER_CLASS: Record<TaskPriority, string> = {
@@ -72,8 +72,8 @@ export function TaskCard({ task, onEdit, onDelete, onView }: TaskCardProps) {
       ref={setNodeRef}
       style={style}
       className={cn(
-        "group relative rounded-lg border border-border border-l-4 bg-card p-3 transition-all cursor-pointer",
-        task.status === "done" && "border-2 border-double border-emerald-500/40",
+        "glass-panel group relative cursor-pointer rounded-lg !border-l-4 p-3 transition-all",
+        task.status === "done" && "ring-1 ring-inset ring-emerald-500/45 bg-emerald-500/[0.05]",
         priorityBorderClass,
         hoverInteractionClass,
         isDragging

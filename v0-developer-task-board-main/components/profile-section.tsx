@@ -4,7 +4,8 @@ import { useEffect, useMemo, useState } from "react";
 import useSWR from "swr";
 import { useAuth } from "@/lib/auth-provider";
 import { toast } from "sonner";
-import { Save, ShieldCheck, Users, Building2, KeyRound, Trash2, Plus } from "lucide-react";
+import { Save, ShieldCheck, Users, Building2, KeyRound, Trash2, Plus, Moon, Sun } from "lucide-react";
+import { useTheme } from "next-themes";
 
 type ProfileResponse = {
   profile: {
@@ -24,6 +25,8 @@ type ProfileResponse = {
 
 export function ProfileSection() {
   const { authFetch, user } = useAuth();
+  const { theme, resolvedTheme, setTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [githubToken, setGithubToken] = useState("");
   const [isProjectSaving, setIsProjectSaving] = useState(false);
@@ -66,6 +69,10 @@ export function ProfileSection() {
     () => Boolean(data?.profile?.has_github_token),
     [data]
   );
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   useEffect(() => {
     const profile = data?.profile;
@@ -197,17 +204,41 @@ export function ProfileSection() {
             Manage your personal details, company info, and integrations.
           </p>
         </div>
-        <button
-          onClick={handleSave}
-          disabled={isSaving}
-          className="inline-flex h-9 items-center gap-2 rounded-lg bg-primary px-4 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50"
-        >
-          <Save className="h-4 w-4" />
-          {isSaving ? "Saving..." : "Save changes"}
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => {
+              const current = resolvedTheme ?? theme;
+              setTheme(current === "dark" ? "light" : "dark");
+            }}
+            disabled={!mounted}
+            className="glass-input inline-flex h-9 items-center gap-2 rounded-lg px-3 text-sm font-medium text-foreground transition-colors hover:bg-secondary/80 disabled:opacity-50"
+            aria-label="Toggle dark mode"
+          >
+            {mounted && (resolvedTheme ?? theme) === "dark" ? (
+              <>
+                <Sun className="h-4 w-4" />
+                Light
+              </>
+            ) : (
+              <>
+                <Moon className="h-4 w-4" />
+                Dark
+              </>
+            )}
+          </button>
+          <button
+            onClick={handleSave}
+            disabled={isSaving}
+            className="inline-flex h-9 items-center gap-2 rounded-lg bg-primary px-4 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50"
+          >
+            <Save className="h-4 w-4" />
+            {isSaving ? "Saving..." : "Save changes"}
+          </button>
+        </div>
       </div>
 
-      <div className="rounded-xl border border-border bg-card p-5">
+      <div className="glass-panel rounded-xl p-5">
         <div className="mb-4 flex items-center gap-2 text-sm font-semibold text-foreground">
           <Users className="h-4 w-4 text-muted-foreground" />
           Personal Info
@@ -261,7 +292,7 @@ export function ProfileSection() {
         </div>
       </div>
 
-      <div className="rounded-xl border border-border bg-card p-5">
+      <div className="glass-panel rounded-xl p-5">
         <div className="mb-4 flex items-center gap-2 text-sm font-semibold text-foreground">
           <Building2 className="h-4 w-4 text-muted-foreground" />
           Company
@@ -295,7 +326,7 @@ export function ProfileSection() {
         </div>
       </div>
 
-      <div className="rounded-xl border border-border bg-card p-5">
+      <div className="glass-panel rounded-xl p-5">
         <div className="mb-4 flex items-center gap-2 text-sm font-semibold text-foreground">
           <KeyRound className="h-4 w-4 text-muted-foreground" />
           GitHub Connection
@@ -400,7 +431,7 @@ export function ProfileSection() {
         </div>
       </div>
 
-      <div className="rounded-xl border border-border bg-card p-5">
+      <div className="glass-panel rounded-xl p-5">
         <div className="mb-4 flex items-center gap-2 text-sm font-semibold text-foreground">
           <ShieldCheck className="h-4 w-4 text-muted-foreground" />
           Compliance

@@ -15,7 +15,7 @@ import {
   type DragOverEvent,
 } from "@dnd-kit/core";
 import { toast } from "sonner";
-import { Loader2 } from "lucide-react";
+import { Loader2, ChevronDown, ChevronUp } from "lucide-react";
 import type {
   Sprint,
   Task,
@@ -94,6 +94,7 @@ export function KanbanBoard() {
   const [activeTask, setActiveTask] = useState<Task | null>(null);
   const [viewingTask, setViewingTask] = useState<Task | null>(null);
   const [sprintDialogOpen, setSprintDialogOpen] = useState(false);
+  const [isBurndownMinimized, setIsBurndownMinimized] = useState(false);
   const [pendingDeleteTaskId, setPendingDeleteTaskId] = useState<string | null>(
     null
   );
@@ -108,6 +109,19 @@ export function KanbanBoard() {
   const [sprintFilter, setSprintFilter] = useState<"all" | "active" | "backlog">(
     "all"
   );
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const saved = window.localStorage.getItem("burndown:minimized");
+    if (saved === "1") {
+      setIsBurndownMinimized(true);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    window.localStorage.setItem("burndown:minimized", isBurndownMinimized ? "1" : "0");
+  }, [isBurndownMinimized]);
 
   const activeSprint = useMemo(
     () => sprints?.find((sprint) => sprint.status === "active") ?? null,
@@ -498,7 +512,7 @@ export function KanbanBoard() {
 
   if (isLoading) {
     return (
-      <div className="flex h-screen items-center justify-center bg-background">
+      <div className="flex h-screen items-center justify-center bg-background/50">
         <div className="flex flex-col items-center gap-3">
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
           <p className="text-sm text-muted-foreground">
@@ -511,7 +525,7 @@ export function KanbanBoard() {
 
   if (error) {
     return (
-      <div className="flex h-screen items-center justify-center bg-background">
+      <div className="flex h-screen items-center justify-center bg-background/50">
         <div className="flex flex-col items-center gap-3 text-center px-4">
           <p className="text-sm text-destructive">
             Failed to load tasks. Please try refreshing.
@@ -528,7 +542,7 @@ export function KanbanBoard() {
   }
 
   return (
-    <div className="flex h-screen flex-col bg-background">
+    <div className="flex h-screen flex-col bg-background/50">
       <BoardHeader
         onCreateTask={() => openCreateDialog()}
         onManageSprints={() => setSprintDialogOpen(true)}
@@ -547,7 +561,21 @@ export function KanbanBoard() {
       />
 
       <div className="space-y-3 p-4 pb-0">
-        <SprintBurndownChart />
+        <div className="flex items-center justify-between px-1">
+          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            Sprint Analytics
+          </p>
+          <button
+            type="button"
+            onClick={() => setIsBurndownMinimized((prev) => !prev)}
+            className="glass-input inline-flex h-8 items-center gap-1.5 rounded-md px-2.5 text-xs font-medium text-foreground transition-colors hover:bg-secondary/80"
+            aria-label={isBurndownMinimized ? "Expand burndown chart" : "Minimize burndown chart"}
+          >
+            {isBurndownMinimized ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronUp className="h-3.5 w-3.5" />}
+            {isBurndownMinimized ? "Show Burndown" : "Hide Burndown"}
+          </button>
+        </div>
+        {!isBurndownMinimized && <SprintBurndownChart />}
       </div>
 
       <div className="flex flex-1 flex-col gap-4 overflow-y-auto p-4 lg:gap-3">

@@ -11,7 +11,7 @@ const config: Config = {
   theme: {
     extend: {
       fontFamily: {
-        sans: ['ui-sans-serif', 'system-ui', 'sans-serif'],
+        sans: ['var(--font-manrope)', 'Segoe UI', 'Helvetica Neue', 'sans-serif'],
         mono: ['var(--font-jetbrains-mono)'],
       },
       colors: {

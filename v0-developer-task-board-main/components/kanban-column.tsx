@@ -58,8 +58,8 @@ export function KanbanColumn({
   return (
     <div
       className={cn(
-        "flex w-72 flex-shrink-0 flex-col rounded-xl border border-border bg-secondary/30 transition-colors lg:w-auto lg:flex-1",
-        isOver && "border-primary/40 bg-primary/5"
+        "glass-panel-soft flex w-72 flex-shrink-0 flex-col rounded-xl transition-colors lg:w-auto lg:flex-1",
+        isOver && "border-primary/45 bg-primary/10"
       )}
     >
       <div className="flex items-center justify-between px-3 py-3">

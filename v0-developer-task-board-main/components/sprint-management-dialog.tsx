@@ -95,8 +95,8 @@ export function SprintManagementDialog({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
-      <div className="absolute inset-0 bg-background/80 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative z-10 mx-4 w-full max-w-3xl rounded-xl border border-border bg-card p-6 shadow-2xl">
+      <div className="absolute inset-0 bg-slate-900/25 backdrop-blur-sm" onClick={onClose} />
+      <div className="glass-panel relative z-10 mx-4 w-full max-w-3xl rounded-xl p-6">
         <div className="mb-4 flex items-center justify-between">
           <h2 className="text-lg font-semibold text-foreground">Sprint Management</h2>
           <button
@@ -108,7 +108,7 @@ export function SprintManagementDialog({
         </div>
 
         <div className="grid gap-6 lg:grid-cols-[1.1fr_1fr]">
-          <form onSubmit={handleSave} className="space-y-3 rounded-lg border border-border p-4">
+          <form onSubmit={handleSave} className="glass-panel-soft space-y-3 rounded-lg p-4">
             <h3 className="text-sm font-medium text-foreground">
               {editingSprint ? "Edit Sprint" : "Create Sprint"}
             </h3>
@@ -165,7 +165,7 @@ export function SprintManagementDialog({
             </div>
           </form>
 
-          <div className="rounded-lg border border-border p-4">
+          <div className="glass-panel-soft rounded-lg p-4">
             <h3 className="mb-3 text-sm font-medium text-foreground">Sprints</h3>
             <div className="max-h-[320px] space-y-2 overflow-y-auto pr-1">
               {sprints.length === 0 && (
@@ -174,7 +174,7 @@ export function SprintManagementDialog({
               {sprints.map((sprint) => (
                 <div
                   key={sprint.id}
-                  className="rounded-lg border border-border bg-secondary/20 p-3"
+                  className="glass-panel-soft rounded-lg p-3"
                 >
                   <div className="flex items-start justify-between gap-2">
                     <div>

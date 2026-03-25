@@ -141,7 +141,7 @@ export function TaskBoardInfo() {
         {SECTIONS.map(({ title, icon: Icon, points }) => (
           <section
             key={title}
-            className="rounded-xl border border-border bg-card p-5"
+            className="glass-panel rounded-xl p-5"
           >
             <div className="mb-3 flex items-center gap-2 text-sm font-semibold text-foreground">
               <Icon className="h-4 w-4 text-muted-foreground" />
@@ -159,7 +159,7 @@ export function TaskBoardInfo() {
         ))}
       </div>
 
-      <div className="mt-6 rounded-xl border border-border bg-secondary/30 p-4">
+      <div className="glass-panel-soft mt-6 rounded-xl p-4">
         <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
           <Users className="h-4 w-4 text-muted-foreground" />
           Team Tip

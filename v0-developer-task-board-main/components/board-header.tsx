@@ -47,6 +47,7 @@ interface BoardHeaderProps {
   sprints: Sprint[];
   activeSprint: Sprint | null;
   statusCounts: StatusCounts;
+  durationMonths: number;
 }
 
 const KPI_ITEMS: {
@@ -109,6 +110,7 @@ export function BoardHeader({
   sprints,
   activeSprint,
   statusCounts,
+  durationMonths,
 }: BoardHeaderProps) {
   const router = useRouter();
   const { authFetch } = useAuth();
@@ -139,22 +141,26 @@ export function BoardHeader({
     <header className="glass-panel flex flex-col gap-4 rounded-none border-x-0 border-t-0 px-6 py-4">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-blue-500/10">
+          <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-blue-500/10">
             {logoUrl ? (
               <img
                 src={logoUrl}
                 alt="Company logo"
-                className="h-6 w-6 rounded-md object-contain"
+                className="h-9 w-9 rounded-md object-contain"
               />
             ) : (
-              <Bug className="h-5 w-5 text-primary-foreground" />
+              <img
+                src="/idle-hands.jpeg"
+                alt="Task Bored mascot"
+                className="h-12 w-12 rounded-md object-cover border-0"
+              />
             )}
           </div>
           <div>
             <h1 className="text-lg font-semibold leading-none tracking-tight text-foreground">
-              Task Board
+              Task Bored
             </h1>
-            <p className="text-xs text-muted-foreground">Task Tracker</p>
+            <p className="text-xs text-muted-foreground italic pt-2">Product by Idle Hands</p>
           </div>
         </div>
 
@@ -320,11 +326,16 @@ export function BoardHeader({
             </div>
           ))}
           <div className="mx-1 h-6 w-px bg-border" />
-          <div className="flex items-baseline gap-1 px-1">
-            <span className="text-sm font-semibold tabular-nums text-foreground">
-              {totalTasks}
+          <div className="flex flex-col px-1">
+            <div className="flex items-baseline gap-1">
+              <span className="text-sm font-semibold tabular-nums text-foreground">
+                {totalTasks}
+              </span>
+              <span className="text-[11px] text-muted-foreground">Total</span>
+            </div>
+            <span className="text-[10px] text-muted-foreground">
+              {durationMonths} month{durationMonths === 1 ? "" : "s"} from start
             </span>
-            <span className="text-[11px] text-muted-foreground">Total</span>
           </div>
         </div>
       </div>

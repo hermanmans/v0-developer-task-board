@@ -43,6 +43,22 @@ import {
   AlertDialogTitle,
 } from "./ui/alert-dialog";
 
+function getElapsedMonthsFromStart(startDate: string) {
+  const start = new Date(startDate);
+  const now = new Date();
+  if (Number.isNaN(start.getTime()) || start > now) return 0;
+
+  let months =
+    (now.getFullYear() - start.getFullYear()) * 12 +
+    (now.getMonth() - start.getMonth());
+
+  if (now.getDate() < start.getDate()) {
+    months -= 1;
+  }
+
+  return Math.max(0, months);
+}
+
 export function KanbanBoard() {
   const { authFetch } = useAuth();
 
@@ -145,6 +161,26 @@ export function KanbanBoard() {
       done: allTasks.filter((t) => t.status === "done").length,
     };
   }, [tasks]);
+
+  const boardDurationMonths = useMemo(() => {
+    const candidateDates: string[] = [];
+
+    (sprints ?? []).forEach((sprint) => {
+      if (sprint.start_date) candidateDates.push(sprint.start_date);
+    });
+
+    (tasks ?? []).forEach((task) => {
+      if (task.created_at) candidateDates.push(task.created_at);
+    });
+
+    if (candidateDates.length === 0) return 0;
+
+    const earliest = candidateDates.sort(
+      (a, b) => new Date(a).getTime() - new Date(b).getTime()
+    )[0];
+
+    return earliest ? getElapsedMonthsFromStart(earliest) : 0;
+  }, [sprints, tasks]);
 
   const filteredTasks = useMemo(() => {
     if (!tasks || !Array.isArray(tasks)) return [];
@@ -558,6 +594,7 @@ export function KanbanBoard() {
         sprints={sprints ?? []}
         activeSprint={activeSprint}
         statusCounts={statusCounts}
+        durationMonths={boardDurationMonths}
       />
 
       <div className="space-y-3 p-4 pb-0">

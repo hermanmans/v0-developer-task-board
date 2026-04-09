@@ -3,7 +3,6 @@
 import React from "react"
 
 import { createClient } from "@/lib/supabase/client";
-import { Bug } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -39,12 +38,16 @@ export default function LoginPage() {
     <div className="flex min-h-screen items-center justify-center bg-background/50 p-4">
       <div className="w-full max-w-sm">
         <div className="mb-8 flex flex-col items-center gap-2">
-          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary">
-            <Bug className="h-6 w-6 text-primary-foreground" />
+          <div className="flex h-16 w-16 items-center justify-center overflow-hidden rounded-xl bg-primary">
+            <img
+              src="/idle-hands.jpeg"
+              alt="Idle Hands logo"
+              className="h-full w-full object-cover"
+            />
           </div>
-          <h1 className="text-xl font-semibold text-foreground">BugBoard</h1>
+          <h1 className="text-xl font-semibold text-foreground">Task Bored</h1>
           <p className="text-sm text-muted-foreground">
-            Sign in to your task tracker
+            Sign in to cure boredom and stuff
           </p>
         </div>
 

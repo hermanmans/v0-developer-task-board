@@ -6,10 +6,11 @@ import { KanbanBoard } from "@/components/kanban-board";
 import { ReportsList } from "@/components/reports-list";
 import { ProfileSection } from "@/components/profile-section";
 import { TaskBoardInfo } from "@/components/task-board-info";
+import { AchievementsBoard } from "@/components/achievements-board";
 import { cn } from "@/lib/utils";
-import { LayoutGrid, FileText, User, Info } from "lucide-react";
+import { LayoutGrid, FileText, User, Info, Trophy } from "lucide-react";
 
-type ActiveTab = "board" | "reports" | "profile" | "info";
+type ActiveTab = "board" | "reports" | "achievements" | "profile" | "info";
 
 function BoardContent() {
   const [activeTab, setActiveTab] = useState<ActiveTab>("board");
@@ -22,7 +23,7 @@ function BoardContent() {
           <button
             onClick={() => setActiveTab("board")}
             className={cn(
-              "flex items-center gap-2 rounded-md border border-transparent px-3 py-2.5 text-sm font-medium transition-all",
+              "flex items-center gap-2 rounded-md border-[0.5px] border-transparent px-3 py-2.5 text-sm font-medium transition-all",
               activeTab === "board"
                 ? "glass-panel-soft border-primary/30 text-foreground"
                 : "text-muted-foreground hover:bg-secondary/70 hover:text-foreground"
@@ -34,7 +35,7 @@ function BoardContent() {
           <button
             onClick={() => setActiveTab("reports")}
             className={cn(
-              "flex items-center gap-2 rounded-md border border-transparent px-3 py-2.5 text-sm font-medium transition-all",
+              "flex items-center gap-2 rounded-md border-[0.5px] border-transparent px-3 py-2.5 text-sm font-medium transition-all",
               activeTab === "reports"
                 ? "glass-panel-soft border-primary/30 text-foreground"
                 : "text-muted-foreground hover:bg-secondary/70 hover:text-foreground"
@@ -44,9 +45,21 @@ function BoardContent() {
             Reports
           </button>
           <button
+            onClick={() => setActiveTab("achievements")}
+            className={cn(
+              "flex items-center gap-2 rounded-md border-[0.5px] border-transparent px-3 py-2.5 text-sm font-medium transition-all",
+              activeTab === "achievements"
+                ? "glass-panel-soft border-primary/30 text-foreground"
+                : "text-muted-foreground hover:bg-secondary/70 hover:text-foreground"
+            )}
+          >
+            <Trophy className="h-4 w-4" />
+            Achievements
+          </button>
+          <button
             onClick={() => setActiveTab("profile")}
             className={cn(
-              "flex items-center gap-2 rounded-md border border-transparent px-3 py-2.5 text-sm font-medium transition-all",
+              "flex items-center gap-2 rounded-md border-[0.5px] border-transparent px-3 py-2.5 text-sm font-medium transition-all",
               activeTab === "profile"
                 ? "glass-panel-soft border-primary/30 text-foreground"
                 : "text-muted-foreground hover:bg-secondary/70 hover:text-foreground"
@@ -58,7 +71,7 @@ function BoardContent() {
           <button
             onClick={() => setActiveTab("info")}
             className={cn(
-              "flex items-center gap-2 rounded-md border border-transparent px-3 py-2.5 text-sm font-medium transition-all",
+              "flex items-center gap-2 rounded-md border-[0.5px] border-transparent px-3 py-2.5 text-sm font-medium transition-all",
               activeTab === "info"
                 ? "glass-panel-soft border-primary/30 text-foreground"
                 : "text-muted-foreground hover:bg-secondary/70 hover:text-foreground"
@@ -74,6 +87,7 @@ function BoardContent() {
       <div className="min-h-0 flex-1">
         {activeTab === "board" && <KanbanBoard />}
         {activeTab === "reports" && <ReportsList />}
+        {activeTab === "achievements" && <AchievementsBoard />}
         {activeTab === "profile" && <ProfileSection />}
         {activeTab === "info" && <TaskBoardInfo />}
       </div>

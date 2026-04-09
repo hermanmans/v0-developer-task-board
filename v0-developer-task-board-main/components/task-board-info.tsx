@@ -13,6 +13,7 @@ import {
   Sigma,
   MessageSquare,
   ShieldCheck,
+  Trophy,
   Users,
 } from "lucide-react";
 
@@ -105,6 +106,17 @@ const SECTIONS: {
       "Medium feature -> 5 points (moderate complexity).",
       "Complex bug -> 8 points (lots of unknowns).",
       "Huge feature -> 13+ points (probably should be split).",
+    ],
+  },
+  {
+    title: "Achievements",
+    icon: Trophy,
+    points: [
+      "Use the Achievements tab to rank team members by completed story points.",
+      "Leaderboard scope can be set to Active Sprint, All Sprints, or a specific sprint.",
+      "Only tasks in Done are counted for achievements and ranking totals.",
+      "Sub achievements include Features Completed, Bugs Smashed, and Tasks Completed.",
+      "Highlight badges identify top performers such as Sprint Champion and Bug Hunter.",
     ],
   },
   {
